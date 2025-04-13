@@ -62,6 +62,7 @@ public class ShaderLoader {
                "uniform mat4 projectionMatrix;\n" +
                "uniform mat4 viewMatrix;\n" +
                "uniform mat4 modelMatrix;\n" +
+               "uniform vec3 viewPosition;\n" + // Añadiendo el uniform viewPosition también en vertex shader
                "\n" +
                "void main() {\n" +
                "    fragColor = color;\n" +

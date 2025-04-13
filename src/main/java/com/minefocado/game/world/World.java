@@ -100,7 +100,7 @@ public class World {
     /**
      * Initializes shader and texture resources
      */
-    private void initRendering() {
+    protected void initRendering() {
         try {
             // Load shader program
             String vertexShaderCode = ShaderLoader.getDefaultVertexShader();

@@ -59,7 +59,7 @@ public class MinefocadoGame {
     private float deltaTime;
     private long lastFrameTime;
 
-    public void run() {
+w    public void run() {
         System.out.println("Starting Minefocado Game using LWJGL " + Version.getVersion());
 
         init();

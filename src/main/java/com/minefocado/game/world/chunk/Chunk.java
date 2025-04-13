@@ -35,6 +35,9 @@ public class Chunk {
     // Chunk mesh for rendering
     private ChunkMesh mesh;
     
+    // Datos del mesh sin operaciones OpenGL (para construcción segura en hilos secundarios)
+    private ChunkMeshData meshData;
+    
     /**
      * Creates a new chunk at the specified coordinates
      * 
@@ -219,6 +222,40 @@ public class Chunk {
     }
     
     /**
+     * Sets the mesh for this chunk
+     * @param mesh El mesh a establecer
+     */
+    public void setMesh(ChunkMesh mesh) {
+        // Limpia el mesh anterior si existe
+        if (this.mesh != null) {
+            this.mesh.cleanup();
+        }
+        this.mesh = mesh;
+    }
+    
+    /**
+     * Gets the mesh data for this chunk
+     */
+    public ChunkMeshData getMeshData() {
+        return meshData;
+    }
+    
+    /**
+     * Sets the mesh data for this chunk
+     * @param meshData Los datos de mesh a establecer
+     */
+    public void setMeshData(ChunkMeshData meshData) {
+        this.meshData = meshData;
+    }
+    
+    /**
+     * Verifica si hay datos de mesh disponibles para crear un mesh OpenGL
+     */
+    public boolean hasMeshData() {
+        return meshData != null;
+    }
+    
+    /**
      * Checks if this chunk has been modified since last save
      */
     public boolean isModified() {
@@ -289,5 +326,7 @@ public class Chunk {
             mesh.cleanup();
             mesh = null;
         }
+        // Liberamos también los datos del mesh
+        meshData = null;
     }
 }

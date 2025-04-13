@@ -106,12 +106,12 @@ public class ChunkMeshBuilder {
     }
     
     /**
-     * Builds a mesh from chunk data
+     * Builds mesh data from chunk data (seguro para hilos secundarios)
      * 
      * @param chunk The chunk to build a mesh for
-     * @return The constructed chunk mesh
+     * @return The constructed chunk mesh data
      */
-    public ChunkMesh buildMesh(Chunk chunk) {
+    public ChunkMeshData buildMeshData(Chunk chunk) {
         List<Float> positions = new ArrayList<>();
         List<Float> colors = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
@@ -142,7 +142,7 @@ public class ChunkMeshBuilder {
                         
                         // If the adjacent block is outside this chunk, get it from the world
                         if (nx < 0 || nx >= Chunk.WIDTH || nz < 0 || nz >= Chunk.DEPTH || ny < 0 || ny >= Chunk.HEIGHT) {
-                            // By default, consider out-of-bounds blocks as air
+                            // Por defecto, considerar los bloques fuera del chunk como aire
                             adjacentBlock = blockRegistry.getBlock(BlockRegistry.AIR_ID);
                         } else {
                             adjacentBlock = chunk.getBlock(nx, ny, nz);
@@ -197,13 +197,6 @@ public class ChunkMeshBuilder {
             }
         }
         
-        // If no faces to render, return empty mesh
-        if (positions.isEmpty()) {
-            return new ChunkMesh(
-                new float[0], new float[0], new float[0], new float[0], new int[0]
-            );
-        }
-        
         // Convert lists to arrays
         float[] posArray = new float[positions.size()];
         float[] colorArray = new float[colors.size()];
@@ -232,7 +225,34 @@ public class ChunkMeshBuilder {
             indexArray[i] = indices.get(i);
         }
         
-        // Create and return the mesh
-        return new ChunkMesh(posArray, colorArray, texCoordArray, normalArray, indexArray);
+        // Create and return the mesh data
+        return new ChunkMeshData(
+            chunk.getChunkX(), 
+            chunk.getChunkZ(), 
+            posArray, 
+            colorArray, 
+            texCoordArray, 
+            normalArray, 
+            indexArray
+        );
+    }
+    
+    /**
+     * Método legacy para mantener compatibilidad que convierte datos a mesh
+     * SOLO debe llamarse desde el hilo principal
+     * 
+     * @param chunk El chunk para el que construir un mesh
+     * @return El mesh construido
+     */
+    public ChunkMesh buildMesh(Chunk chunk) {
+        ChunkMeshData meshData = buildMeshData(chunk);
+        if (meshData.isEmpty()) {
+            return new ChunkMesh(
+                meshData.getChunkX(), 
+                meshData.getChunkZ(), 
+                new float[0], new float[0], new float[0], new float[0], new int[0]
+            );
+        }
+        return meshData.createMesh();
     }
 }

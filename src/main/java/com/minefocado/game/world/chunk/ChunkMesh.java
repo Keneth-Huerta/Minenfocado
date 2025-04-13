@@ -19,12 +19,15 @@ import main.java.com.minefocado.game.render.ShaderProgram;
  * Handles vertex data management and rendering
  */
 public class ChunkMesh {
-    // OpenGL object IDs
-    private final int vaoId;         // Vertex Array Object
-    private final int posVboId;      // Position Vertex Buffer Object
-    private final int texCoordVboId; // Texture Coordinate VBO
-    private final int normalVboId;   // Normal VBO
-    private final int indexVboId;    // Index Buffer Object
+    // OpenGL object IDs - removed 'final' so they can be set to null after cleanup
+    private int vaoId;         // Vertex Array Object
+    private int posVboId;      // Position Vertex Buffer Object
+    private int texCoordVboId; // Texture Coordinate VBO
+    private int normalVboId;   // Normal VBO
+    private int indexVboId;    // Index Buffer Object
+    
+    // Flag to track if mesh has been cleaned up
+    private boolean isCleanedUp = false;
     
     // Mesh data
     private final int vertexCount;
@@ -187,8 +190,8 @@ public class ChunkMesh {
      * Thread-safe - Can be called from any thread
      */
     public void cleanup() {
-        if (vaoId == -1) {
-            return; // Empty mesh, nothing to clean
+        if (vaoId == -1 || isCleanedUp) {
+            return; // Empty mesh or already cleaned
         }
         
         // If we're on the main thread, clean up directly
@@ -208,7 +211,7 @@ public class ChunkMesh {
      * or via the cleanup queue in MinefocadoGame
      */
     public void cleanupOnMainThread() {
-        if (vaoId == -1) {
+        if (vaoId == -1 || isCleanedUp) {
             return; // Empty mesh or already cleaned up
         }
         
@@ -230,9 +233,7 @@ public class ChunkMesh {
             glDeleteVertexArrays(vaoId);
             
             // Mark as cleaned up
-            // Using a negative sentinel value to indicate this mesh has been cleaned up
-            int cleanedUpSentinel = -999;
-            posVboId = texCoordVboId = normalVboId = indexVboId = vaoId = cleanedUpSentinel;
+            isCleanedUp = true;
         } catch (Exception e) {
             System.err.println("Error during mesh cleanup: " + e.getMessage());
         }

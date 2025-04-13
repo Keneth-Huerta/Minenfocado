@@ -50,11 +50,9 @@ public class ShaderLoader {
     public static String getDefaultVertexShader() {
         return "#version 330 core\n" +
                "layout (location = 0) in vec3 position;\n" +
-               "layout (location = 1) in vec3 color;\n" +
-               "layout (location = 2) in vec2 texCoord;\n" +
-               "layout (location = 3) in vec3 normal;\n" +
+               "layout (location = 1) in vec2 texCoord;\n" +  // Changed from color to texCoord at location 1
+               "layout (location = 2) in vec3 normal;\n" +     // Changed normal to location 2
                "\n" +
-               "out vec3 fragColor;\n" +
                "out vec2 fragTexCoord;\n" +
                "out vec3 fragNormal;\n" +
                "out vec3 fragPos;\n" +
@@ -62,10 +60,8 @@ public class ShaderLoader {
                "uniform mat4 projectionMatrix;\n" +
                "uniform mat4 viewMatrix;\n" +
                "uniform mat4 modelMatrix;\n" +
-               "uniform vec3 viewPosition;\n" + // Añadiendo el uniform viewPosition también en vertex shader
                "\n" +
                "void main() {\n" +
-               "    fragColor = color;\n" +
                "    fragTexCoord = texCoord;\n" +
                "    fragNormal = mat3(transpose(inverse(modelMatrix))) * normal;\n" +
                "    fragPos = vec3(modelMatrix * vec4(position, 1.0));\n" +
@@ -81,7 +77,6 @@ public class ShaderLoader {
      */
     public static String getDefaultFragmentShader() {
         return "#version 330 core\n" +
-               "in vec3 fragColor;\n" +
                "in vec2 fragTexCoord;\n" +
                "in vec3 fragNormal;\n" +
                "in vec3 fragPos;\n" +
@@ -90,7 +85,6 @@ public class ShaderLoader {
                "\n" +
                "uniform sampler2D textureSampler;\n" +
                "uniform vec3 lightPosition;\n" +
-               "uniform vec3 viewPosition;\n" +  // Aseguramos que este uniforme se llama igual que en World.java
                "uniform float ambientStrength;\n" +
                "\n" +
                "void main() {\n" +
@@ -104,7 +98,7 @@ public class ShaderLoader {
                "    vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);\n" +
                "    \n" +
                "    // Combine lights\n" +
-               "    vec3 lightResult = (ambient + diffuse) * fragColor;\n" +
+               "    vec3 lightResult = ambient + diffuse;\n" +
                "    \n" +
                "    // Sample texture\n" +
                "    vec4 texColor = texture(textureSampler, fragTexCoord);\n" +

@@ -50,6 +50,15 @@ public class World {
     // Thread pool for async chunk operations
     private final ExecutorService chunkExecutor;
     
+    // Flag to prevent task submission when the executor is shutting down
+    private boolean isShuttingDown = false;
+    
+    // Maximum number of chunk load operations to schedule at once
+    private static final int MAX_CHUNK_LOAD_QUEUE = 100;
+    
+    // Keep track of active task count
+    private int pendingChunkTasks = 0;
+    
     // World seed
     private final long seed;
     
@@ -376,6 +385,11 @@ public class World {
      * @param chunkZ Chunk Z coordinate
      */
     private void loadChunk(int chunkX, int chunkZ) {
+        // Skip if we're shutting down or have too many pending tasks
+        if (isShuttingDown || pendingChunkTasks >= MAX_CHUNK_LOAD_QUEUE) {
+            return;
+        }
+        
         // Create a new chunk
         Chunk chunk = new Chunk(this, chunkX, chunkZ);
         
@@ -385,19 +399,40 @@ public class World {
         // Add to loaded chunks (sin construir el mesh todavía)
         chunks.put(new ChunkPos(chunkX, chunkZ), chunk);
         
-        // Programar la construcción de datos del mesh en un hilo secundario
-        chunkExecutor.execute(() -> {
-            // Generar datos del mesh
-            ChunkMeshData meshData = meshBuilder.buildMeshData(chunk);
-            chunk.setMeshData(meshData);
-            
-            // Añadir a la cola para crear el mesh en el hilo principal
-            synchronized (meshCreationQueue) {
-                if (!meshCreationQueue.contains(chunk)) {
-                    meshCreationQueue.add(chunk);
-                }
+        try {
+            // Track number of pending tasks
+            synchronized(this) {
+                pendingChunkTasks++;
             }
-        });
+            
+            // Programar la construcción de datos del mesh en un hilo secundario
+            chunkExecutor.execute(() -> {
+                try {
+                    // Generar datos del mesh
+                    ChunkMeshData meshData = meshBuilder.buildMeshData(chunk);
+                    chunk.setMeshData(meshData);
+                    
+                    // Añadir a la cola para crear el mesh en el hilo principal
+                    synchronized (meshCreationQueue) {
+                        if (!meshCreationQueue.contains(chunk)) {
+                            meshCreationQueue.add(chunk);
+                        }
+                    }
+                } finally {
+                    // Always decrement task count when done
+                    synchronized(World.this) {
+                        pendingChunkTasks--;
+                    }
+                }
+            });
+        } catch (Exception e) {
+            // Handle thread pool rejection or other errors
+            synchronized(this) {
+                pendingChunkTasks--; // Decrement since we failed to queue
+            }
+            System.err.println("Failed to schedule chunk mesh generation for chunk " + 
+                              chunkX + "," + chunkZ + ": " + e.getMessage());
+        }
     }
     
     /**
@@ -495,6 +530,9 @@ public class World {
      * Cleanup world resources
      */
     public void cleanup() {
+        // Mark as shutting down to prevent new tasks
+        isShuttingDown = true;
+        
         // Shutdown chunk executor
         chunkExecutor.shutdown();
         

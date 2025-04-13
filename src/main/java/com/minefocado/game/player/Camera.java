@@ -105,7 +105,8 @@ public class Camera {
         yaw += deltaX * MOUSE_SENSITIVITY;
         
         // Update pitch (vertical rotation) with limits to avoid gimbal lock
-        pitch -= deltaY * MOUSE_SENSITIVITY;
+        // FIX: Changed from -= to += to correct inverted vertical camera movement
+        pitch += deltaY * MOUSE_SENSITIVITY;
         if (pitch > 89.0f) {
             pitch = 89.0f;
         }

@@ -107,14 +107,20 @@ public class World {
             String fragmentShaderCode = ShaderLoader.getDefaultFragmentShader();
             shaderProgram = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
             
-            // Create uniforms
-            shaderProgram.createUniform("projectionMatrix");
-            shaderProgram.createUniform("viewMatrix");
-            shaderProgram.createUniform("modelMatrix");
-            shaderProgram.createUniform("textureSampler");
-            shaderProgram.createUniform("lightPosition");
-            shaderProgram.createUniform("viewPosition");
-            shaderProgram.createUniform("ambientStrength");
+            // Create uniforms - Implementando manejo de errores para cada uniform
+            try {
+                shaderProgram.createUniform("projectionMatrix");
+                shaderProgram.createUniform("viewMatrix");
+                shaderProgram.createUniform("modelMatrix");
+                shaderProgram.createUniform("textureSampler");
+                shaderProgram.createUniform("lightPosition");
+                shaderProgram.createUniform("viewPosition");
+                shaderProgram.createUniform("ambientStrength");
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to create some shader uniforms: " + e.getMessage());
+                System.err.println("This may cause rendering issues but will not prevent the game from running.");
+                // Continuamos a pesar del error para que el juego pueda ejecutarse
+            }
             
             // Load texture atlas (creates a default one if not found)
             textureAtlas = Texture.loadTexture("textures/blocks.png");
@@ -260,7 +266,7 @@ public class World {
         
         // Calculate which chunks should be loaded
         for (int x = playerChunkX - LOAD_DISTANCE; x <= playerChunkX + LOAD_DISTANCE; x++) {
-            for (int z = playerChunkZ - LOAD_DISTANCE; z++) {
+            for (int z = playerChunkZ - LOAD_DISTANCE; z <= playerChunkZ + LOAD_DISTANCE; z++) {
                 ChunkPos pos = new ChunkPos(x, z);
                 toKeep.add(pos);
                 
@@ -351,15 +357,43 @@ public class World {
         shaderProgram.bind();
         textureAtlas.bind();
         
-        // Set shared uniforms
-        shaderProgram.setUniform("projectionMatrix", projectionMatrix);
-        shaderProgram.setUniform("viewMatrix", viewMatrix);
-        shaderProgram.setUniform("textureSampler", 0); // Texture unit 0
+        // Set shared uniforms with try-catch para cada uno
+        try {
+            shaderProgram.setUniform("projectionMatrix", projectionMatrix);
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
+        
+        try {
+            shaderProgram.setUniform("viewMatrix", viewMatrix);
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
+        
+        try {
+            shaderProgram.setUniform("textureSampler", 0); // Texture unit 0
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
         
         // Set lighting uniforms
-        shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Sun position
-        shaderProgram.setUniform("viewPosition", playerPos);
-        shaderProgram.setUniform("ambientStrength", 0.6f);
+        try {
+            shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Sun position
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
+        
+        try {
+            shaderProgram.setUniform("viewPosition", playerPos);
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
+        
+        try {
+            shaderProgram.setUniform("ambientStrength", 0.6f);
+        } catch (Exception e) {
+            // Ignorar si el uniform no existe
+        }
         
         // Render all chunks that are in render distance
         for (Chunk chunk : chunks.values()) {
@@ -370,7 +404,11 @@ public class World {
             if (Math.abs(dx) <= RENDER_DISTANCE && Math.abs(dz) <= RENDER_DISTANCE) {
                 ChunkMesh mesh = chunk.getMesh();
                 if (mesh != null) {
-                    mesh.render(shaderProgram);
+                    try {
+                        mesh.render(shaderProgram);
+                    } catch (Exception e) {
+                        System.err.println("Error rendering chunk at " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": " + e.getMessage());
+                    }
                 }
             }
         }

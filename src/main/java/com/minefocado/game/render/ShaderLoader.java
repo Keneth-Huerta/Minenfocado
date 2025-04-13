@@ -89,7 +89,7 @@ public class ShaderLoader {
                "\n" +
                "uniform sampler2D textureSampler;\n" +
                "uniform vec3 lightPosition;\n" +
-               "uniform vec3 viewPosition;\n" +
+               "uniform vec3 viewPosition;\n" +  // Aseguramos que este uniforme se llama igual que en World.java
                "uniform float ambientStrength;\n" +
                "\n" +
                "void main() {\n" +

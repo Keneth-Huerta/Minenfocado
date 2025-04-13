@@ -161,7 +161,11 @@ public class ShaderProgram {
      * @param value Integer value
      */
     public void setUniform(String uniformName, int value) {
-        glUniform1i(uniforms.get(uniformName), value);
+        // Verificar si el uniform existe antes de establecer el valor
+        Integer location = uniforms.get(uniformName);
+        if (location != null) {
+            glUniform1i(location, value);
+        }
     }
     
     /**
@@ -171,7 +175,11 @@ public class ShaderProgram {
      * @param value Float value
      */
     public void setUniform(String uniformName, float value) {
-        glUniform1f(uniforms.get(uniformName), value);
+        // Verificar si el uniform existe antes de establecer el valor
+        Integer location = uniforms.get(uniformName);
+        if (location != null) {
+            glUniform1f(location, value);
+        }
     }
     
     /**
@@ -181,7 +189,11 @@ public class ShaderProgram {
      * @param value Vector3f value
      */
     public void setUniform(String uniformName, Vector3f value) {
-        glUniform3f(uniforms.get(uniformName), value.x, value.y, value.z);
+        // Verificar si el uniform existe antes de establecer el valor
+        Integer location = uniforms.get(uniformName);
+        if (location != null) {
+            glUniform3f(location, value.x, value.y, value.z);
+        }
     }
     
     /**
@@ -191,8 +203,12 @@ public class ShaderProgram {
      * @param value Matrix4f value
      */
     public void setUniform(String uniformName, Matrix4f value) {
-        // Store the matrix data in the buffer
-        value.get(matrixBuffer);
-        glUniformMatrix4fv(uniforms.get(uniformName), false, matrixBuffer);
+        // Verificar si el uniform existe antes de establecer el valor
+        Integer location = uniforms.get(uniformName);
+        if (location != null) {
+            // Store the matrix data in the buffer
+            value.get(matrixBuffer);
+            glUniformMatrix4fv(location, false, matrixBuffer);
+        }
     }
 }

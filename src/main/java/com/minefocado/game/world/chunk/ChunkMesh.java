@@ -22,7 +22,6 @@ public class ChunkMesh {
     // OpenGL object IDs
     private final int vaoId;         // Vertex Array Object
     private final int posVboId;      // Position Vertex Buffer Object
-    private final int colorVboId;    // Color Vertex Buffer Object
     private final int texCoordVboId; // Texture Coordinate VBO
     private final int normalVboId;   // Normal VBO
     private final int indexVboId;    // Index Buffer Object
@@ -38,32 +37,14 @@ public class ChunkMesh {
     private final int chunkZ;
     
     /**
-     * Creates a new chunk mesh with the provided vertex data
-     * 
-     * @param positions Vertex positions (3 floats per vertex: x, y, z)
-     * @param colors Vertex colors (3 floats per vertex: r, g, b)
-     * @param texCoords Texture coordinates (2 floats per vertex: u, v)
-     * @param normals Vertex normals (3 floats per vertex: nx, ny, nz)
-     * @param indices Triangles indices (3 indices per triangle)
-     */
-    public ChunkMesh(float[] positions, float[] colors, float[] texCoords, 
-                   float[] normals, int[] indices) {
-        this(0, 0, positions, colors, texCoords, normals, indices);
-    }
-    
-    /**
-     * Creates a new chunk mesh with the provided vertex data and chunk position
+     * Creates a new chunk mesh from the provided ChunkMeshData
+     * IMPORTANTE: Este constructor DEBE ser llamado únicamente desde el hilo principal que tiene el contexto OpenGL
      * 
      * @param chunkX X coordinate of the chunk
      * @param chunkZ Z coordinate of the chunk
-     * @param positions Vertex positions (3 floats per vertex: x, y, z)
-     * @param colors Vertex colors (3 floats per vertex: r, g, b)
-     * @param texCoords Texture coordinates (2 floats per vertex: u, v)
-     * @param normals Vertex normals (3 floats per vertex: nx, ny, nz)
-     * @param indices Triangles indices (3 indices per triangle)
+     * @param meshData Los datos de mesh pre-calculados
      */
-    public ChunkMesh(int chunkX, int chunkZ, float[] positions, float[] colors, float[] texCoords, 
-                   float[] normals, int[] indices) {
+    public ChunkMesh(int chunkX, int chunkZ, ChunkMeshData meshData) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         
@@ -73,7 +54,25 @@ public class ChunkMesh {
                 0, 
                 chunkZ * Chunk.DEPTH);
         
-        // Create and bind VAO
+        // Get mesh data from ChunkMeshData
+        float[] positions = meshData.getPositions();
+        float[] normals = meshData.getNormals();
+        float[] texCoords = meshData.getTextureCoords();
+        int[] indices = meshData.getIndices();
+
+        // Si no hay datos, crear un mesh vacío
+        if (!meshData.hasData()) {
+            // Initialize with empty data
+            this.vaoId = -1;
+            this.posVboId = -1;
+            this.texCoordVboId = -1;
+            this.normalVboId = -1;
+            this.indexVboId = -1;
+            this.vertexCount = 0;
+            return;
+        }
+        
+        // Create and bind VAO - SOLO EN HILO PRINCIPAL
         vaoId = glGenVertexArrays();
         glBindVertexArray(vaoId);
         
@@ -86,22 +85,13 @@ public class ChunkMesh {
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(posBuffer);
         
-        // Color VBO
-        colorVboId = glGenBuffers();
-        FloatBuffer colorBuffer = MemoryUtil.memAllocFloat(colors.length);
-        colorBuffer.put(colors).flip();
-        glBindBuffer(GL_ARRAY_BUFFER, colorVboId);
-        glBufferData(GL_ARRAY_BUFFER, colorBuffer, GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
-        MemoryUtil.memFree(colorBuffer);
-        
         // Texture Coordinates VBO
         texCoordVboId = glGenBuffers();
         FloatBuffer texCoordBuffer = MemoryUtil.memAllocFloat(texCoords.length);
         texCoordBuffer.put(texCoords).flip();
         glBindBuffer(GL_ARRAY_BUFFER, texCoordVboId);
         glBufferData(GL_ARRAY_BUFFER, texCoordBuffer, GL_STATIC_DRAW);
-        glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, 0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(texCoordBuffer);
         
         // Normal VBO
@@ -110,7 +100,7 @@ public class ChunkMesh {
         normalBuffer.put(normals).flip();
         glBindBuffer(GL_ARRAY_BUFFER, normalVboId);
         glBufferData(GL_ARRAY_BUFFER, normalBuffer, GL_STATIC_DRAW);
-        glVertexAttribPointer(3, 3, GL_FLOAT, false, 0, 0);
+        glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(normalBuffer);
         
         // Index VBO
@@ -123,9 +113,8 @@ public class ChunkMesh {
         
         // Enable all vertex attribute arrays
         glEnableVertexAttribArray(0); // Position
-        glEnableVertexAttribArray(1); // Color
-        glEnableVertexAttribArray(2); // Texture Coordinates
-        glEnableVertexAttribArray(3); // Normal
+        glEnableVertexAttribArray(1); // Texture Coordinates
+        glEnableVertexAttribArray(2); // Normal
         
         // Unbind VAO
         glBindVertexArray(0);
@@ -140,7 +129,7 @@ public class ChunkMesh {
      * @param shader The shader program to use
      */
     public void render(ShaderProgram shader) {
-        if (vertexCount == 0) {
+        if (vertexCount == 0 || vaoId == -1) {
             return; // Don't render empty meshes
         }
         
@@ -185,19 +174,30 @@ public class ChunkMesh {
     }
     
     /**
+     * Check if this mesh has vertex data
+     * 
+     * @return True if the mesh contains vertices
+     */
+    public boolean hasVertices() {
+        return vertexCount > 0 && vaoId != -1;
+    }
+    
+    /**
      * Cleans up resources used by the mesh
      */
     public void cleanup() {
+        if (vaoId == -1) {
+            return; // Empty mesh, nothing to clean
+        }
+        
         // Disable vertex attribute arrays
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(2);
-        glDisableVertexAttribArray(3);
         
         // Delete VBOs
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glDeleteBuffers(posVboId);
-        glDeleteBuffers(colorVboId);
         glDeleteBuffers(texCoordVboId);
         glDeleteBuffers(normalVboId);
         glDeleteBuffers(indexVboId);

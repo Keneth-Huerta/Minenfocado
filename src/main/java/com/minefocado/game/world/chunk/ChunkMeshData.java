@@ -1,103 +1,122 @@
 package main.java.com.minefocado.game.world.chunk;
 
+import org.lwjgl.system.MemoryUtil;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL30.*;
+
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+
 /**
- * Clase que almacena datos de mesh para un chunk sin utilizar OpenGL
- * Permite la generación de meshes en hilos secundarios de forma segura
+ * Contiene los datos de un mesh de chunk sin crear objetos OpenGL.
+ * Esta clase es segura para uso en hilos secundarios ya que no utiliza operaciones OpenGL.
  */
 public class ChunkMeshData {
-    // Datos del mesh
-    private final float[] positions;
-    private final float[] colors;
-    private final float[] texCoords;
-    private final float[] normals;
-    private final int[] indices;
+    // Datos de vértices
+    private float[] positions;
+    private float[] normals;
+    private float[] textureCoords;
+    private int[] indices;
     
-    // Posición del chunk
-    private final int chunkX;
-    private final int chunkZ;
+    // Contador de vértices
+    private int vertexCount;
     
     /**
-     * Crea un nuevo objeto de datos de mesh
-     * 
-     * @param chunkX Coordenada X del chunk
-     * @param chunkZ Coordenada Z del chunk
-     * @param positions Posiciones de los vértices
-     * @param colors Colores de los vértices
-     * @param texCoords Coordenadas de textura
-     * @param normals Vectores normales
-     * @param indices Índices para los triángulos
+     * Crea un nuevo objeto de datos de mesh vacío
      */
-    public ChunkMeshData(int chunkX, int chunkZ, float[] positions, float[] colors, 
-                          float[] texCoords, float[] normals, int[] indices) {
-        this.chunkX = chunkX;
-        this.chunkZ = chunkZ;
-        this.positions = positions;
-        this.colors = colors;
-        this.texCoords = texCoords;
-        this.normals = normals;
-        this.indices = indices;
+    public ChunkMeshData() {
+        this.positions = new float[0];
+        this.normals = new float[0];
+        this.textureCoords = new float[0];
+        this.indices = new int[0];
+        this.vertexCount = 0;
     }
     
     /**
-     * Devuelve los datos de posiciones
+     * Crea un nuevo objeto de datos de mesh con los datos proporcionados
+     * 
+     * @param positions Posiciones de vértices
+     * @param normals Normales de vértices
+     * @param textureCoords Coordenadas de textura
+     * @param indices Índices de vértices
+     */
+    public ChunkMeshData(float[] positions, float[] normals, float[] textureCoords, int[] indices) {
+        this.positions = positions;
+        this.normals = normals;
+        this.textureCoords = textureCoords;
+        this.indices = indices;
+        this.vertexCount = indices.length;
+    }
+    
+    /**
+     * Obtiene las posiciones de vértices
+     * 
+     * @return Array de posiciones de vértices
      */
     public float[] getPositions() {
         return positions;
     }
     
     /**
-     * Devuelve los datos de colores
-     */
-    public float[] getColors() {
-        return colors;
-    }
-    
-    /**
-     * Devuelve las coordenadas de textura
-     */
-    public float[] getTexCoords() {
-        return texCoords;
-    }
-    
-    /**
-     * Devuelve los datos de normales
+     * Obtiene las normales de vértices
+     * 
+     * @return Array de normales de vértices
      */
     public float[] getNormals() {
         return normals;
     }
     
     /**
-     * Devuelve los índices
+     * Obtiene las coordenadas de textura
+     * 
+     * @return Array de coordenadas de textura
+     */
+    public float[] getTextureCoords() {
+        return textureCoords;
+    }
+    
+    /**
+     * Obtiene los índices de vértices
+     * 
+     * @return Array de índices de vértices
      */
     public int[] getIndices() {
         return indices;
     }
     
     /**
-     * Devuelve la coordenada X del chunk
+     * Verifica si el mesh contiene datos
+     * 
+     * @return true si el mesh tiene vértices, false en caso contrario
      */
-    public int getChunkX() {
-        return chunkX;
+    public boolean hasData() {
+        return vertexCount > 0;
     }
     
     /**
-     * Devuelve la coordenada Z del chunk
+     * Obtiene la cantidad de vértices
+     * 
+     * @return Número de vértices
      */
-    public int getChunkZ() {
-        return chunkZ;
+    public int getVertexCount() {
+        return vertexCount;
     }
     
     /**
-     * Verifica si el mesh está vacío (no hay vértices para renderizar)
+     * Crea un ChunkMesh a partir de estos datos
+     * IMPORTANTE: Este método DEBE ser llamado desde el hilo principal 
+     * con contexto OpenGL activo
+     * 
+     * @return Un nuevo ChunkMesh con objetos OpenGL creados
      */
-    public boolean isEmpty() {
-        return indices.length == 0;
-    }
-    
-    /**
-     * Crea un ChunkMesh a partir de estos datos (DEBE ejecutarse en el hilo principal)
-     */
-    public ChunkMesh createMesh() {
-        return new ChunkMesh(chunkX, chunkZ, positions, colors, texCoords, normals, indices);
+    public ChunkMesh createMesh(int chunkX, int chunkZ) {
+        if (!hasData()) {
+            return null;
+        }
+        
+        // Crear y retornar un nuevo ChunkMesh
+        return new ChunkMesh(chunkX, chunkZ, this);
     }
 }

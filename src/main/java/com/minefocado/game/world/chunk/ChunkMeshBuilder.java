@@ -108,12 +108,11 @@ public class ChunkMeshBuilder {
     /**
      * Builds mesh data from chunk data (seguro para hilos secundarios)
      * 
-     * @param chunk The chunk to build a mesh for
-     * @return The constructed chunk mesh data
+     * @param chunk El chunk para el que construir datos de mesh
+     * @return Los datos del mesh construido (sin objetos OpenGL)
      */
     public ChunkMeshData buildMeshData(Chunk chunk) {
         List<Float> positions = new ArrayList<>();
-        List<Float> colors = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
@@ -142,8 +141,10 @@ public class ChunkMeshBuilder {
                         
                         // If the adjacent block is outside this chunk, get it from the world
                         if (nx < 0 || nx >= Chunk.WIDTH || nz < 0 || nz >= Chunk.DEPTH || ny < 0 || ny >= Chunk.HEIGHT) {
-                            // Por defecto, considerar los bloques fuera del chunk como aire
-                            adjacentBlock = blockRegistry.getBlock(BlockRegistry.AIR_ID);
+                            // Convert to world coordinates
+                            int worldX = chunk.getChunkX() * Chunk.WIDTH + nx;
+                            int worldZ = chunk.getChunkZ() * Chunk.DEPTH + nz;
+                            adjacentBlock = chunk.getWorld().getBlockAt(worldX, ny, worldZ);
                         } else {
                             adjacentBlock = chunk.getBlock(nx, ny, nz);
                         }
@@ -165,12 +166,6 @@ public class ChunkMeshBuilder {
                                 positions.add(x + FACE_VERTICES[faceIndex][i][0]);
                                 positions.add(y + FACE_VERTICES[faceIndex][i][1]);
                                 positions.add(z + FACE_VERTICES[faceIndex][i][2]);
-                                
-                                // Color (simple ambient occlusion)
-                                float light = FACE_LIGHT[faceIndex];
-                                colors.add(light);
-                                colors.add(light);
-                                colors.add(light);
                                 
                                 // Texture coordinates with atlas offset
                                 texCoords.add(textureX + TEX_COORDS[i][0] * textureSizeX);
@@ -197,24 +192,18 @@ public class ChunkMeshBuilder {
             }
         }
         
-        // Convert lists to arrays
-        float[] posArray = new float[positions.size()];
-        float[] colorArray = new float[colors.size()];
-        float[] texCoordArray = new float[texCoords.size()];
+        // Convertir listas a arrays
+        float[] positionArray = new float[positions.size()];
+        float[] textureArray = new float[texCoords.size()];
         float[] normalArray = new float[normals.size()];
         int[] indexArray = new int[indices.size()];
         
-        // Fill arrays
         for (int i = 0; i < positions.size(); i++) {
-            posArray[i] = positions.get(i);
-        }
-        
-        for (int i = 0; i < colors.size(); i++) {
-            colorArray[i] = colors.get(i);
+            positionArray[i] = positions.get(i);
         }
         
         for (int i = 0; i < texCoords.size(); i++) {
-            texCoordArray[i] = texCoords.get(i);
+            textureArray[i] = texCoords.get(i);
         }
         
         for (int i = 0; i < normals.size(); i++) {
@@ -225,34 +214,12 @@ public class ChunkMeshBuilder {
             indexArray[i] = indices.get(i);
         }
         
-        // Create and return the mesh data
+        // Crear y retornar los datos del mesh (sin objetos OpenGL)
         return new ChunkMeshData(
-            chunk.getChunkX(), 
-            chunk.getChunkZ(), 
-            posArray, 
-            colorArray, 
-            texCoordArray, 
-            normalArray, 
+            positionArray,
+            normalArray,
+            textureArray,
             indexArray
         );
-    }
-    
-    /**
-     * Método legacy para mantener compatibilidad que convierte datos a mesh
-     * SOLO debe llamarse desde el hilo principal
-     * 
-     * @param chunk El chunk para el que construir un mesh
-     * @return El mesh construido
-     */
-    public ChunkMesh buildMesh(Chunk chunk) {
-        ChunkMeshData meshData = buildMeshData(chunk);
-        if (meshData.isEmpty()) {
-            return new ChunkMesh(
-                meshData.getChunkX(), 
-                meshData.getChunkZ(), 
-                new float[0], new float[0], new float[0], new float[0], new int[0]
-            );
-        }
-        return meshData.createMesh();
     }
 }

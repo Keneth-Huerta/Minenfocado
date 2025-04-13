@@ -21,6 +21,7 @@ import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 import main.java.com.minefocado.game.world.chunk.Chunk;
 import main.java.com.minefocado.game.world.chunk.ChunkMesh;
 import main.java.com.minefocado.game.world.chunk.ChunkMeshBuilder;
+import main.java.com.minefocado.game.world.chunk.ChunkMeshData;
 import main.java.com.minefocado.game.world.generation.TerrainGenerator;
 
 /**
@@ -64,6 +65,9 @@ public class World {
     // Current player chunk for loading/unloading calculations
     private int playerChunkX;
     private int playerChunkZ;
+    
+    // Lista de chunks que necesitan crear su mesh (solo para hilos principales)
+    private final List<Chunk> meshCreationQueue = new ArrayList<>();
     
     /**
      * Creates a new world with the default seed
@@ -243,17 +247,75 @@ public class World {
             // Load new chunks in a separate thread
             chunkExecutor.execute(this::loadAndUnloadChunks);
         }
+        
+        // Procesar la cola de meshes pendientes (desde el hilo principal)
+        processMeshCreationQueue();
+    }
+    
+    /**
+     * Procesa meshes pendientes (DEBE ejecutarse en el hilo principal)
+     */
+    private void processMeshCreationQueue() {
+        // Límite de meshes a procesar por frame para evitar cuelgues
+        final int MAX_MESHES_PER_FRAME = 3;
+        int processed = 0;
+        
+        synchronized (meshCreationQueue) {
+            List<Chunk> processedChunks = new ArrayList<>();
+            
+            for (Chunk chunk : meshCreationQueue) {
+                if (processed >= MAX_MESHES_PER_FRAME) {
+                    break;
+                }
+                
+                // Crear el mesh a partir de los datos en el hilo principal
+                if (chunk.hasMeshData()) {
+                    ChunkMeshData meshData = chunk.getMeshData();
+                    // Pasar las coordenadas del chunk para posicionamiento correcto
+                    ChunkMesh mesh = meshData.createMesh(chunk.getChunkX(), chunk.getChunkZ());
+                    
+                    // Asignar el mesh al chunk
+                    chunk.setMesh(mesh);
+                    
+                    // Ya no necesitamos los datos del mesh
+                    chunk.setMeshData(null);
+                    
+                    // Marcar el chunk como procesado
+                    processedChunks.add(chunk);
+                    processed++;
+                }
+            }
+            
+            // Eliminar los chunks procesados de la cola
+            meshCreationQueue.removeAll(processedChunks);
+        }
     }
     
     /**
      * Updates meshes for chunks that have been modified
      */
     public void updateChunkMeshes() {
-        // Check dirty chunks and rebuild their meshes if needed
+        // Check dirty chunks and schedule their mesh rebuilding if needed
         for (Chunk chunk : chunks.values()) {
             if (chunk.isMeshDirty()) {
-                ChunkMesh mesh = meshBuilder.buildMesh(chunk);
-                chunk.setMeshDirty(false);
+                // Solo generamos los datos en el hilo principal
+                // pero los cargamos a OpenGL en updateMeshes
+                final Chunk dirtyChunk = chunk;
+                
+                // Ejecutar la parte de cálculo en un hilo secundario
+                chunkExecutor.execute(() -> {
+                    ChunkMeshData meshData = meshBuilder.buildMeshData(dirtyChunk);
+                    dirtyChunk.setMeshData(meshData);
+                    
+                    // Añadir a la cola para crear el mesh real en el hilo principal
+                    synchronized (meshCreationQueue) {
+                        if (!meshCreationQueue.contains(dirtyChunk)) {
+                            meshCreationQueue.add(dirtyChunk);
+                        }
+                    }
+                    
+                    dirtyChunk.setMeshDirty(false);
+                });
             }
         }
     }
@@ -320,11 +382,22 @@ public class World {
         // Generate terrain for the chunk
         terrainGenerator.generateTerrain(chunk);
         
-        // Build initial mesh
-        ChunkMesh mesh = meshBuilder.buildMesh(chunk);
-        
-        // Add to loaded chunks
+        // Add to loaded chunks (sin construir el mesh todavía)
         chunks.put(new ChunkPos(chunkX, chunkZ), chunk);
+        
+        // Programar la construcción de datos del mesh en un hilo secundario
+        chunkExecutor.execute(() -> {
+            // Generar datos del mesh
+            ChunkMeshData meshData = meshBuilder.buildMeshData(chunk);
+            chunk.setMeshData(meshData);
+            
+            // Añadir a la cola para crear el mesh en el hilo principal
+            synchronized (meshCreationQueue) {
+                if (!meshCreationQueue.contains(chunk)) {
+                    meshCreationQueue.add(chunk);
+                }
+            }
+        });
     }
     
     /**

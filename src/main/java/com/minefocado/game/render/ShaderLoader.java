@@ -85,25 +85,34 @@ public class ShaderLoader {
                "\n" +
                "uniform sampler2D textureSampler;\n" +
                "uniform vec3 lightPosition;\n" +
+               "uniform vec3 viewPosition;\n" +
                "uniform float ambientStrength;\n" +
                "\n" +
                "void main() {\n" +
-               "    // Ambient lighting\n" +
+               "    // Ambient lighting - aumentada para evitar partes muy oscuras\n" +
                "    vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);\n" +
                "    \n" +
                "    // Diffuse lighting\n" +
                "    vec3 norm = normalize(fragNormal);\n" +
-               "    vec3 lightDir = normalize(lightPosition - fragPos);\n" +
-               "    float diff = max(dot(norm, lightDir), 0.0);\n" +
-               "    vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);\n" +
+               "    \n" +
+               "    // Dirección de luz desde arriba (como el sol) - no basada en posición\n" +
+               "    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));\n" +
+               "    \n" +
+               "    // Cálculo de luz difusa usando valor absoluto para iluminar ambos lados\n" +
+               "    float diff = max(dot(norm, lightDir), 0.4);\n" +
+               "    vec3 diffuse = diff * vec3(1.0, 1.0, 0.9); // Luz ligeramente amarilla\n" +
+               "    \n" +
+               "    // Luz direccional adicional para la parte superior\n" +
+               "    float topLight = max(dot(vec3(0.0, 1.0, 0.0), norm), 0.0) * 0.5;\n" +
                "    \n" +
                "    // Combine lights\n" +
-               "    vec3 lightResult = ambient + diffuse;\n" +
+               "    vec3 lightResult = ambient + diffuse + vec3(topLight);\n" +
                "    \n" +
                "    // Sample texture\n" +
                "    vec4 texColor = texture(textureSampler, fragTexCoord);\n" +
+               "    if (texColor.a < 0.1) discard; // Descartar píxeles transparentes\n" +
                "    \n" +
-               "    // Final color\n" +
+               "    // Final color with tone mapping to prevent over-bright areas\n" +
                "    outColor = vec4(lightResult, 1.0) * texColor;\n" +
                "}";
     }

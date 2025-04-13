@@ -72,6 +72,10 @@ public class MinefocadoGame {
     private double lastMouseX, lastMouseY;
     private boolean mouseGrabbed = true;
     
+    // Control de doble pulsación de espacio
+    private long lastSpacePress = 0;
+    private static final long DOUBLE_PRESS_TIME = 300; // tiempo máximo entre pulsaciones (milisegundos)
+    
     // Temporización del juego
     private float deltaTime;
     private long lastFrameTime;
@@ -311,8 +315,9 @@ public class MinefocadoGame {
         // Procesar entrada de movimiento
         boolean forward = keyPressed[GLFW_KEY_W];
         boolean backward = keyPressed[GLFW_KEY_S];
-        boolean left = keyPressed[GLFW_KEY_A];
-        boolean right = keyPressed[GLFW_KEY_D];
+        // Intercambiar las teclas A y D para corregir el movimiento lateral
+        boolean left = keyPressed[GLFW_KEY_D];  // Antes era A
+        boolean right = keyPressed[GLFW_KEY_A]; // Antes era D
         boolean jump = keyPressed[GLFW_KEY_SPACE];
         boolean crouch = keyPressed[GLFW_KEY_LEFT_SHIFT];
         
@@ -337,15 +342,21 @@ public class MinefocadoGame {
                     player.setHotbarSelection(slot);
                 }
                 
-                // Alternar modo vuelo con tecla F
-                if (key == GLFW_KEY_F) {
-                    player.toggleFlying();
-                    // Mostrar mensaje según el estado de vuelo
-                    if (player.isFlying()) {
-                        System.out.println("Modo de vuelo activado - Presiona F para desactivar");
-                    } else {
-                        System.out.println("Modo de vuelo desactivado - Presiona F para activar");
+                // Detectar doble pulsación de espacio para vuelo
+                if (key == GLFW_KEY_SPACE) {
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - lastSpacePress < DOUBLE_PRESS_TIME) {
+                        // Doble pulsación detectada, alternar modo vuelo
+                        player.toggleFlying();
+                        
+                        // Mostrar mensaje según el estado de vuelo
+                        if (player.isFlying()) {
+                            System.out.println("Modo de vuelo activado - Pulsa espacio dos veces para desactivar");
+                        } else {
+                            System.out.println("Modo de vuelo desactivado - Pulsa espacio dos veces para activar");
+                        }
                     }
+                    lastSpacePress = currentTime;
                 }
             } else if (action == GLFW_RELEASE) {
                 keyPressed[key] = false;

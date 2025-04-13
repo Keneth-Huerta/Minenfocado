@@ -76,12 +76,14 @@ public class Camera {
             position.z += Math.cos(Math.toRadians(yaw)) * speed;
         }
         if (left) {
-            position.x -= Math.sin(Math.toRadians(yaw - 90)) * speed;
-            position.z += Math.cos(Math.toRadians(yaw - 90)) * speed;
+            // Corregido: Usar rotación 90 grados a la izquierda correctamente
+            position.x += Math.sin(Math.toRadians(yaw - 90)) * speed;
+            position.z -= Math.cos(Math.toRadians(yaw - 90)) * speed;
         }
         if (right) {
-            position.x -= Math.sin(Math.toRadians(yaw + 90)) * speed;
-            position.z += Math.cos(Math.toRadians(yaw + 90)) * speed;
+            // Corregido: Usar rotación 90 grados a la derecha correctamente
+            position.x += Math.sin(Math.toRadians(yaw + 90)) * speed;
+            position.z -= Math.cos(Math.toRadians(yaw + 90)) * speed;
         }
         if (up) {
             position.y += speed;

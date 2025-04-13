@@ -562,6 +562,62 @@ public class World {
     }
     
     /**
+     * Precarga el área alrededor del punto de spawn para garantizar
+     * que el jugador aparezca en un mundo correctamente generado
+     * 
+     * @param worldX Coordenada X del punto de spawn
+     * @param worldZ Coordenada Z del punto de spawn
+     */
+    public void preloadSpawnArea(float worldX, float worldZ) {
+        // Calcular el chunk donde aparecerá el jugador
+        int spawnChunkX = Math.floorDiv((int)worldX, Chunk.WIDTH);
+        int spawnChunkZ = Math.floorDiv((int)worldZ, Chunk.DEPTH);
+        
+        // Guardar esta posición como la posición del jugador
+        playerChunkX = spawnChunkX;
+        playerChunkZ = spawnChunkZ;
+        
+        // Radio de carga inicial (más pequeño que el radio normal para cargar rápido)
+        int preloadRadius = 2;
+        
+        System.out.println("Precargando chunks alrededor del spawn...");
+        
+        // Cargar inmediatamente el chunk del spawn y los chunks adyacentes
+        for (int x = spawnChunkX - preloadRadius; x <= spawnChunkX + preloadRadius; x++) {
+            for (int z = spawnChunkZ - preloadRadius; z <= spawnChunkZ + preloadRadius; z++) {
+                // Priorizar el chunk central (donde aparecerá el jugador)
+                if (x == spawnChunkX && z == spawnChunkZ) {
+                    Chunk chunk = new Chunk(this, x, z);
+                    terrainGenerator.generateTerrain(chunk);
+                    terrainGenerator.populateChunk(chunk);
+                    
+                    // Generar mesh sincronizadamente para el chunk central
+                    ChunkMeshData meshData = meshBuilder.buildMeshData(chunk);
+                    chunk.setMeshData(meshData);
+                    
+                    // Añadir a chunks cargados
+                    chunks.put(new ChunkPos(x, z), chunk);
+                    
+                    // Añadir a la cola para crear el mesh en el hilo principal
+                    synchronized (meshCreationQueue) {
+                        if (!meshCreationQueue.contains(chunk)) {
+                            meshCreationQueue.add(chunk);
+                        }
+                    }
+                } else {
+                    // Cargar los demás chunks normalmente
+                    loadChunk(x, z);
+                }
+            }
+        }
+        
+        // Procesar la cola de meshes para asegurarse de que el mesh del chunk central esté listo
+        processMeshCreationQueue();
+        
+        System.out.println("Área de spawn precargada con éxito");
+    }
+    
+    /**
      * Represents a chunk position in the world
      */
     private static class ChunkPos {

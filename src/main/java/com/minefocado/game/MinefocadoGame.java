@@ -172,19 +172,38 @@ public class MinefocadoGame {
     }
     
     private void initGame() {
-        // Initialize block registry first (singleton)
+        // Mostrar una pantalla de carga
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Fondo negro para la pantalla de carga
+        
+        // Inicializar block registry first (singleton)
         BlockRegistry blockRegistry = BlockRegistry.getInstance();
         // Ensure block registry is initialized before creating the world
         System.out.println("Block registry initialized with " + blockRegistry.getBlockCount() + " blocks");
         
         try {
+            // Renderizar texto de carga en la pantalla
+            renderLoadingScreen("Generando mundo...");
+            glfwSwapBuffers(window);
+            
             // Create world with random seed
             long seed = System.currentTimeMillis();
             world = new World(seed);
             System.out.println("World initialized with seed: " + seed);
             
+            // Asegurar que los chunks alrededor del spawn estén cargados antes de continuar
+            // Precargar el chunk donde aparecerá el jugador y los chunks alrededor
+            world.preloadSpawnArea(0, 0);
+            
+            // Actualizar pantalla de carga
+            renderLoadingScreen("Generando personaje...");
+            glfwSwapBuffers(window);
+            
             // Create player at position (0, 100, 0) - well above ground level to ensure no spawning inside terrain
             player = new Player(0, 100, 0, world);
+            
+            // Activar modo de vuelo por defecto
+            player.toggleFlying();
             
             // Initialize camera projection matrix
             player.getCamera().updateProjectionMatrix(WIDTH, HEIGHT);
@@ -196,6 +215,22 @@ public class MinefocadoGame {
             System.err.println("Error initializing game: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Renderiza un texto de carga sencillo en la pantalla 
+     * @param text El texto a mostrar
+     */
+    private void renderLoadingScreen(String text) {
+        // Esta es una implementación sencilla - en un juego real usarías una biblioteca de UI
+        // Para fines de demo, solo mostraremos texto en la consola
+        System.out.println(text);
+        
+        // Podríamos agregar un render básico con OpenGL para mostrar texto,
+        // pero para mantenerlo simple, dejamos la pantalla negra con la información en consola
+        
+        // Procesar eventos mientras carga para evitar que la aplicación parezca bloqueada
+        glfwPollEvents();
     }
 
     private void loop() {

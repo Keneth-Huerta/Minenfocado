@@ -22,7 +22,7 @@ public class CrosshairRenderer {
     };
     
     // Tamaño del punto
-    private float pointSize = 10.0f;
+    private float pointSize = 16.0f;
     
     /**
      * Crea un nuevo renderizador de punto de mira
@@ -50,11 +50,20 @@ public class CrosshairRenderer {
                 "#version 330 core\n" +
                 "out vec4 color;\n" +
                 "void main() {\n" +
-                "    float dist = length(gl_PointCoord - vec2(0.5, 0.5)) * 2.0;\n" +
-                "    if (dist > 0.5 && dist < 0.8) {\n" +
+                "    vec2 center = vec2(0.5, 0.5);\n" +
+                "    float dist = length(gl_PointCoord - center) * 2.0;\n" +
+                "    \n" +
+                "    // Crear un crosshair más definido con un círculo exterior y uno interior\n" +
+                "    if (dist > 0.4 && dist < 0.7) {\n" +
+                "        // Borde externo blanco\n" +
                 "        color = vec4(1.0, 1.0, 1.0, 1.0);\n" +
-                "    } else if (dist <= 0.5) {\n" +
-                "        color = vec4(0.0, 0.0, 0.0, 1.0);\n" +
+                "    } else if (dist <= 0.4) {\n" +
+                "        // Centro negro\n" +
+                "        color = vec4(0.0, 0.0, 0.0, 0.9);\n" +
+                "    } else if (dist < 1.0) {\n" +
+                "        // Halo exterior semi-transparente\n" +
+                "        float alpha = 0.3 * (1.0 - dist);\n" +
+                "        color = vec4(1.0, 1.0, 1.0, alpha);\n" +
                 "    } else {\n" +
                 "        discard; // Transparente\n" +
                 "    }\n" +
@@ -89,11 +98,18 @@ public class CrosshairRenderer {
     public void render() {
         // Guardar el estado de OpenGL
         boolean depthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+        int previousBlendSrc = glGetInteger(GL_BLEND_SRC);
+        int previousBlendDst = glGetInteger(GL_BLEND_DST);
+        boolean blendEnabled = glIsEnabled(GL_BLEND);
         
         // Preparar para renderizado 2D
         if (depthTestEnabled) {
             glDisable(GL_DEPTH_TEST);
         }
+        
+        // Habilitar mezcla para transparencia
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
         try {
             shaderProgram.bind();
@@ -117,6 +133,12 @@ public class CrosshairRenderer {
             // Restaurar estado de OpenGL
             if (depthTestEnabled) {
                 glEnable(GL_DEPTH_TEST);
+            }
+            
+            if (!blendEnabled) {
+                glDisable(GL_BLEND);
+            } else {
+                glBlendFunc(previousBlendSrc, previousBlendDst);
             }
         }
     }

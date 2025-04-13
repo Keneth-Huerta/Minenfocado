@@ -184,26 +184,57 @@ public class ChunkMesh {
     
     /**
      * Cleans up resources used by the mesh
+     * Thread-safe - Can be called from any thread
      */
     public void cleanup() {
         if (vaoId == -1) {
             return; // Empty mesh, nothing to clean
         }
         
-        // Disable vertex attribute arrays
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
+        // If we're on the main thread, clean up directly
+        // Otherwise, queue for cleanup on the main thread
+        if (org.lwjgl.glfw.GLFW.glfwGetCurrentContext() != 0) {
+            // We're on the main thread with an OpenGL context
+            cleanupOnMainThread();
+        } else {
+            // We're on a background thread, queue for cleanup on main thread
+            main.java.com.minefocado.game.MinefocadoGame.queueMeshForCleanup(this);
+        }
+    }
+    
+    /**
+     * Perform actual OpenGL cleanup operations (MUST be called from main thread)
+     * This is called either directly from cleanup() if on main thread
+     * or via the cleanup queue in MinefocadoGame
+     */
+    public void cleanupOnMainThread() {
+        if (vaoId == -1) {
+            return; // Empty mesh or already cleaned up
+        }
         
-        // Delete VBOs
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDeleteBuffers(posVboId);
-        glDeleteBuffers(texCoordVboId);
-        glDeleteBuffers(normalVboId);
-        glDeleteBuffers(indexVboId);
-        
-        // Delete the VAO
-        glBindVertexArray(0);
-        glDeleteVertexArrays(vaoId);
+        try {
+            // Disable vertex attribute arrays
+            glDisableVertexAttribArray(0);
+            glDisableVertexAttribArray(1);
+            glDisableVertexAttribArray(2);
+            
+            // Delete VBOs
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glDeleteBuffers(posVboId);
+            glDeleteBuffers(texCoordVboId);
+            glDeleteBuffers(normalVboId);
+            glDeleteBuffers(indexVboId);
+            
+            // Delete the VAO
+            glBindVertexArray(0);
+            glDeleteVertexArrays(vaoId);
+            
+            // Mark as cleaned up
+            // Using a negative sentinel value to indicate this mesh has been cleaned up
+            int cleanedUpSentinel = -999;
+            posVboId = texCoordVboId = normalVboId = indexVboId = vaoId = cleanedUpSentinel;
+        } catch (Exception e) {
+            System.err.println("Error during mesh cleanup: " + e.getMessage());
+        }
     }
 }

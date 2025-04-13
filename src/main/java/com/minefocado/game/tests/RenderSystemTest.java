@@ -212,6 +212,11 @@ public class RenderSystemTest {
         float angle = 0;
         long lastTime = System.currentTimeMillis();
         
+        // Calcular el centro del chunk para que la cámara mire hacia él
+        float chunkCenterX = Chunk.WIDTH / 2.0f;
+        float chunkCenterZ = Chunk.DEPTH / 2.0f;
+        float chunkCenterY = 0.0f; // Miramos al nivel del suelo
+        
         // Bucle de renderizado hasta que se cierre la ventana
         while (!glfwWindowShouldClose(window)) {
             // Calcular delta time para animación
@@ -222,13 +227,15 @@ public class RenderSystemTest {
             // Actualizar ángulo de rotación
             angle += deltaTime * 0.5f;
             
-            // Actualizar matriz de vista para rotación alrededor del origen
+            // Actualizar matriz de vista para rotación alrededor del centro del chunk
             float radius = 30.0f;
-            float camX = (float) (Math.sin(angle) * radius);
-            float camZ = (float) (Math.cos(angle) * radius);
+            float camX = chunkCenterX + (float) (Math.sin(angle) * radius);
+            float camZ = chunkCenterZ + (float) (Math.cos(angle) * radius);
+            float camY = 15.0f;
+            
             viewMatrix = new Matrix4f().lookAt(
-                new Vector3f(camX, 15, camZ),
-                new Vector3f(0, 0, 0),
+                new Vector3f(camX, camY, camZ),
+                new Vector3f(chunkCenterX, chunkCenterY, chunkCenterZ),
                 new Vector3f(0, 1, 0)
             );
             
@@ -245,7 +252,7 @@ public class RenderSystemTest {
                 shader.setUniform("viewMatrix", viewMatrix);
                 shader.setUniform("textureSampler", 0);
                 shader.setUniform("lightPosition", new Vector3f(100, 100, 100));
-                shader.setUniform("viewPosition", new Vector3f(camX, 15, camZ));
+                shader.setUniform("viewPosition", new Vector3f(camX, camY, camZ));
                 shader.setUniform("ambientStrength", 0.6f);
             } catch (Exception e) {
                 // Ignorar errores de uniforms

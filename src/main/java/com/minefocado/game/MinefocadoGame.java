@@ -16,6 +16,9 @@ import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -27,12 +30,26 @@ import org.lwjgl.system.MemoryStack;
 import main.java.com.minefocado.game.player.Player;
 import main.java.com.minefocado.game.world.World;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
+import main.java.com.minefocado.game.world.chunk.ChunkMesh;
 
 /**
  * Main game class for the Minefocado game
  * A Minecraft-like voxel game with terrain generation and player interaction.
  */
 public class MinefocadoGame {
+    
+    // Static queue for mesh cleanup operations from background threads
+    private static final List<ChunkMesh> meshCleanupQueue = Collections.synchronizedList(new ArrayList<>());
+    
+    /**
+     * Add a mesh to the cleanup queue to be safely deleted on the main thread
+     * @param mesh The mesh to be cleaned up
+     */
+    public static void queueMeshForCleanup(ChunkMesh mesh) {
+        if (mesh != null) {
+            meshCleanupQueue.add(mesh);
+        }
+    }
 	
     public static void main(String[] args) {
         new MinefocadoGame().run();
@@ -199,11 +216,30 @@ public class MinefocadoGame {
             // Update game state
             update();
             
+            // Process any pending mesh cleanups (must be done on main thread)
+            processMeshCleanupQueue();
+            
             // Render frame
             render();
             
             // Poll for window events
             glfwPollEvents();
+        }
+    }
+    
+    /**
+     * Process any pending mesh cleanups on the main thread with OpenGL context
+     */
+    private void processMeshCleanupQueue() {
+        synchronized (meshCleanupQueue) {
+            for (ChunkMesh mesh : meshCleanupQueue) {
+                try {
+                    mesh.cleanupOnMainThread();
+                } catch (Exception e) {
+                    System.err.println("Error cleaning up mesh: " + e.getMessage());
+                }
+            }
+            meshCleanupQueue.clear();
         }
     }
     

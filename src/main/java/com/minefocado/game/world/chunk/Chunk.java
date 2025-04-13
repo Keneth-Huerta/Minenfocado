@@ -215,14 +215,6 @@ public class Chunk {
      * Gets the mesh for this chunk, building it if necessary
      */
     public ChunkMesh getMesh() {
-        if (mesh == null || meshDirty) {
-            if (mesh == null) {
-                mesh = new ChunkMesh();
-            }
-            
-            ChunkMeshBuilder.buildMesh(this, mesh);
-            meshDirty = false;
-        }
         return mesh;
     }
     
@@ -294,7 +286,7 @@ public class Chunk {
      */
     public void dispose() {
         if (mesh != null) {
-            mesh.dispose();
+            mesh.cleanup();
             mesh = null;
         }
     }

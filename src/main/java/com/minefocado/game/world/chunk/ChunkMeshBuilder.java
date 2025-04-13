@@ -143,7 +143,7 @@ public class ChunkMeshBuilder {
                         // If the adjacent block is outside this chunk, get it from the world
                         if (nx < 0 || nx >= Chunk.WIDTH || nz < 0 || nz >= Chunk.DEPTH || ny < 0 || ny >= Chunk.HEIGHT) {
                             // By default, consider out-of-bounds blocks as air
-                            adjacentBlock = blockRegistry.AIR;
+                            adjacentBlock = blockRegistry.getBlock(BlockRegistry.AIR_ID);
                         } else {
                             adjacentBlock = chunk.getBlock(nx, ny, nz);
                         }

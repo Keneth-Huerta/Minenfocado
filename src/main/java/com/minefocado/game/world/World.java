@@ -49,6 +49,12 @@ public class World {
     // Block registry reference
     private final BlockRegistry blockRegistry;
     
+    // Shader program for rendering chunks
+    private ShaderProgram shaderProgram;
+    
+    // Texture atlas for blocks
+    private Texture textureAtlas;
+    
     // Current player chunk for loading/unloading calculations
     private int playerChunkX;
     private int playerChunkZ;
@@ -80,6 +86,38 @@ public class World {
         // Initialize player position
         this.playerChunkX = 0;
         this.playerChunkZ = 0;
+        
+        // Initialize rendering components
+        initRendering();
+    }
+    
+    /**
+     * Initializes shader and texture resources
+     */
+    private void initRendering() {
+        try {
+            // Load shader program
+            String vertexShaderCode = ShaderLoader.getDefaultVertexShader();
+            String fragmentShaderCode = ShaderLoader.getDefaultFragmentShader();
+            shaderProgram = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
+            
+            // Create uniforms
+            shaderProgram.createUniform("projectionMatrix");
+            shaderProgram.createUniform("viewMatrix");
+            shaderProgram.createUniform("modelMatrix");
+            shaderProgram.createUniform("textureSampler");
+            shaderProgram.createUniform("lightPosition");
+            shaderProgram.createUniform("viewPosition");
+            shaderProgram.createUniform("ambientStrength");
+            
+            // Load texture atlas (creates a default one if not found)
+            textureAtlas = Texture.loadTexture("textures/blocks.png");
+            
+            System.out.println("World rendering initialized successfully");
+        } catch (Exception e) {
+            System.err.println("Failed to initialize world rendering: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     /**
@@ -216,7 +254,7 @@ public class World {
         
         // Calculate which chunks should be loaded
         for (int x = playerChunkX - LOAD_DISTANCE; x <= playerChunkX + LOAD_DISTANCE; x++) {
-            for (int z = playerChunkZ - LOAD_DISTANCE; z <= playerChunkZ + LOAD_DISTANCE; z++) {
+            for (int z = playerChunkZ - LOAD_DISTANCE; z++) {
                 ChunkPos pos = new ChunkPos(x, z);
                 toKeep.add(pos);
                 
@@ -293,8 +331,30 @@ public class World {
     
     /**
      * Renders visible chunks
+     * 
+     * @param projectionMatrix Projection matrix from the camera
+     * @param viewMatrix View matrix from the camera
+     * @param playerPos Player position for lighting
      */
-    public void render() {
+    public void render(Matrix4f projectionMatrix, Matrix4f viewMatrix, Vector3f playerPos) {
+        if (shaderProgram == null || textureAtlas == null) {
+            return;
+        }
+        
+        // Bind shader and texture
+        shaderProgram.bind();
+        textureAtlas.bind();
+        
+        // Set shared uniforms
+        shaderProgram.setUniform("projectionMatrix", projectionMatrix);
+        shaderProgram.setUniform("viewMatrix", viewMatrix);
+        shaderProgram.setUniform("textureSampler", 0); // Texture unit 0
+        
+        // Set lighting uniforms
+        shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Sun position
+        shaderProgram.setUniform("viewPosition", playerPos);
+        shaderProgram.setUniform("ambientStrength", 0.6f);
+        
         // Render all chunks that are in render distance
         for (Chunk chunk : chunks.values()) {
             int dx = chunk.getChunkX() - playerChunkX;
@@ -304,10 +364,14 @@ public class World {
             if (Math.abs(dx) <= RENDER_DISTANCE && Math.abs(dz) <= RENDER_DISTANCE) {
                 ChunkMesh mesh = chunk.getMesh();
                 if (mesh != null) {
-                    mesh.render();
+                    mesh.render(shaderProgram);
                 }
             }
         }
+        
+        // Unbind
+        textureAtlas.unbind();
+        shaderProgram.unbind();
     }
     
     /**

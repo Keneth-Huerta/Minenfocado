@@ -1,6 +1,8 @@
 package main.java.com.minefocado.game.world.chunk;
 
 import org.lwjgl.system.MemoryUtil;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -9,6 +11,8 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
+
+import main.java.com.minefocado.game.render.ShaderProgram;
 
 /**
  * Represents a mesh for rendering a chunk in OpenGL
@@ -26,6 +30,13 @@ public class ChunkMesh {
     // Mesh data
     private final int vertexCount;
     
+    // Model matrix for transforming
+    private final Matrix4f modelMatrix;
+    
+    // Chunk position in world space
+    private final int chunkX;
+    private final int chunkZ;
+    
     /**
      * Creates a new chunk mesh with the provided vertex data
      * 
@@ -37,6 +48,31 @@ public class ChunkMesh {
      */
     public ChunkMesh(float[] positions, float[] colors, float[] texCoords, 
                    float[] normals, int[] indices) {
+        this(0, 0, positions, colors, texCoords, normals, indices);
+    }
+    
+    /**
+     * Creates a new chunk mesh with the provided vertex data and chunk position
+     * 
+     * @param chunkX X coordinate of the chunk
+     * @param chunkZ Z coordinate of the chunk
+     * @param positions Vertex positions (3 floats per vertex: x, y, z)
+     * @param colors Vertex colors (3 floats per vertex: r, g, b)
+     * @param texCoords Texture coordinates (2 floats per vertex: u, v)
+     * @param normals Vertex normals (3 floats per vertex: nx, ny, nz)
+     * @param indices Triangles indices (3 indices per triangle)
+     */
+    public ChunkMesh(int chunkX, int chunkZ, float[] positions, float[] colors, float[] texCoords, 
+                   float[] normals, int[] indices) {
+        this.chunkX = chunkX;
+        this.chunkZ = chunkZ;
+        
+        // Calculate model matrix based on chunk position
+        modelMatrix = new Matrix4f().identity().translate(
+                chunkX * Chunk.WIDTH, 
+                0, 
+                chunkZ * Chunk.DEPTH);
+        
         // Create and bind VAO
         vaoId = glGenVertexArrays();
         glBindVertexArray(vaoId);
@@ -99,9 +135,18 @@ public class ChunkMesh {
     }
     
     /**
-     * Renders the mesh
+     * Renders the mesh with the specified shader
+     * 
+     * @param shader The shader program to use
      */
-    public void render() {
+    public void render(ShaderProgram shader) {
+        if (vertexCount == 0) {
+            return; // Don't render empty meshes
+        }
+        
+        // Set model matrix in shader
+        shader.setUniform("modelMatrix", modelMatrix);
+        
         // Bind to the VAO
         glBindVertexArray(vaoId);
         
@@ -110,6 +155,33 @@ public class ChunkMesh {
         
         // Unbind from the VAO
         glBindVertexArray(0);
+    }
+    
+    /**
+     * Gets the model matrix for this chunk mesh
+     * 
+     * @return The model matrix
+     */
+    public Matrix4f getModelMatrix() {
+        return modelMatrix;
+    }
+    
+    /**
+     * Gets the X coordinate of the chunk in chunk coordinates
+     * 
+     * @return Chunk X coordinate
+     */
+    public int getChunkX() {
+        return chunkX;
+    }
+    
+    /**
+     * Gets the Z coordinate of the chunk in chunk coordinates
+     * 
+     * @return Chunk Z coordinate
+     */
+    public int getChunkZ() {
+        return chunkZ;
     }
     
     /**

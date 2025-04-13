@@ -75,15 +75,16 @@ public class Camera {
             position.x -= Math.sin(Math.toRadians(yaw)) * speed;
             position.z += Math.cos(Math.toRadians(yaw)) * speed;
         }
+        // Corrección del movimiento lateral (estaba completamente invertido)
         if (left) {
-            // Corregido: Usar rotación 90 grados a la izquierda correctamente
-            position.x += Math.sin(Math.toRadians(yaw - 90)) * speed;
-            position.z -= Math.cos(Math.toRadians(yaw - 90)) * speed;
+            // Movimiento hacia la izquierda (90 grados en sentido antihorario desde la dirección de vista)
+            position.x -= Math.sin(Math.toRadians(yaw + 90)) * speed;
+            position.z += Math.cos(Math.toRadians(yaw + 90)) * speed;
         }
         if (right) {
-            // Corregido: Usar rotación 90 grados a la derecha correctamente
-            position.x += Math.sin(Math.toRadians(yaw + 90)) * speed;
-            position.z -= Math.cos(Math.toRadians(yaw + 90)) * speed;
+            // Movimiento hacia la derecha (90 grados en sentido horario desde la dirección de vista)
+            position.x -= Math.sin(Math.toRadians(yaw - 90)) * speed;
+            position.z += Math.cos(Math.toRadians(yaw - 90)) * speed;
         }
         if (up) {
             position.y += speed;

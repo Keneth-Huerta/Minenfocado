@@ -340,6 +340,12 @@ public class MinefocadoGame {
                 // Toggle flying mode with F key
                 if (key == GLFW_KEY_F) {
                     player.toggleFlying();
+                    // Mostrar mensaje según el estado de vuelo
+                    if (player.isFlying()) {
+                        System.out.println("Modo de vuelo activado - Presiona F para desactivar");
+                    } else {
+                        System.out.println("Modo de vuelo desactivado - Presiona F para activar");
+                    }
                 }
             } else if (action == GLFW_RELEASE) {
                 keyPressed[key] = false;

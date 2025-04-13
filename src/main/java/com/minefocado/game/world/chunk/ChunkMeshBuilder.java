@@ -130,64 +130,8 @@ public class ChunkMeshBuilder {
                         continue;
                     }
                     
-                    // Check each face of the block
-                    for (int faceIndex = 0; faceIndex < 6; faceIndex++) {
-                        // Get the adjacent block in this direction
-                        int nx = x + FACE_DIRECTIONS[faceIndex][0];
-                        int ny = y + FACE_DIRECTIONS[faceIndex][1];
-                        int nz = z + FACE_DIRECTIONS[faceIndex][2];
-                        
-                        Block adjacentBlock;
-                        
-                        // If the adjacent block is outside this chunk, get it from the world
-                        if (nx < 0 || nx >= Chunk.WIDTH || nz < 0 || nz >= Chunk.DEPTH || ny < 0 || ny >= Chunk.HEIGHT) {
-                            // Convert to world coordinates
-                            int worldX = chunk.getChunkX() * Chunk.WIDTH + nx;
-                            int worldZ = chunk.getChunkZ() * Chunk.DEPTH + nz;
-                            adjacentBlock = chunk.getWorld().getBlockAt(worldX, ny, worldZ);
-                        } else {
-                            adjacentBlock = chunk.getBlock(nx, ny, nz);
-                        }
-                        
-                        // Only add face if it should be rendered
-                        if (block.shouldRenderFace(adjacentBlock)) {
-                            // Get texture index for this face
-                            int textureIndex = block.getTextureIndex(faceIndex);
-                            
-                            // Calculate texture atlas coordinates
-                            float textureX = (textureIndex % (int)TEXTURE_ATLAS_SIZE) / TEXTURE_ATLAS_SIZE;
-                            float textureY = (textureIndex / (int)TEXTURE_ATLAS_SIZE) / TEXTURE_ATLAS_SIZE;
-                            float textureSizeX = 1.0f / TEXTURE_ATLAS_SIZE;
-                            float textureSizeY = 1.0f / TEXTURE_ATLAS_SIZE;
-                            
-                            // Add face to mesh
-                            for (int i = 0; i < 4; i++) {
-                                // Position
-                                positions.add(x + FACE_VERTICES[faceIndex][i][0]);
-                                positions.add(y + FACE_VERTICES[faceIndex][i][1]);
-                                positions.add(z + FACE_VERTICES[faceIndex][i][2]);
-                                
-                                // Texture coordinates with atlas offset
-                                texCoords.add(textureX + TEX_COORDS[i][0] * textureSizeX);
-                                texCoords.add(textureY + TEX_COORDS[i][1] * textureSizeY);
-                                
-                                // Normal
-                                normals.add(NORMALS[faceIndex][0]);
-                                normals.add(NORMALS[faceIndex][1]);
-                                normals.add(NORMALS[faceIndex][2]);
-                            }
-                            
-                            // Add indices for two triangles (counter-clockwise)
-                            indices.add(indexCount);
-                            indices.add(indexCount + 1);
-                            indices.add(indexCount + 2);
-                            indices.add(indexCount + 2);
-                            indices.add(indexCount + 3);
-                            indices.add(indexCount);
-                            
-                            indexCount += 4;
-                        }
-                    }
+                    // Añadir todas las caras visibles del bloque a la malla
+                    addBlock(chunk, x, y, z, positions, indices, texCoords, normals, block);
                 }
             }
         }
@@ -221,5 +165,219 @@ public class ChunkMeshBuilder {
             textureArray,
             indexArray
         );
+    }
+    
+    /**
+     * Determina si se debe renderizar una cara de bloque basado en la visibilidad del bloque adyacente
+     * 
+     * @param chunk El chunk actual
+     * @param blockX Coordenada X del bloque actual
+     * @param blockY Coordenada Y del bloque actual
+     * @param blockZ Coordenada Z del bloque actual
+     * @param faceX Componente X del vector normal de la cara
+     * @param faceY Componente Y del vector normal de la cara
+     * @param faceZ Componente Z del vector normal de la cara
+     * @return true si la cara debe ser visible (bloque adyacente es transparente o no existe)
+     */
+    private boolean shouldRenderFace(Chunk chunk, int blockX, int blockY, int blockZ, int faceX, int faceY, int faceZ) {
+        // Calcular coordenadas del bloque adyacente
+        int adjacentX = blockX + faceX;
+        int adjacentY = blockY + faceY;
+        int adjacentZ = blockZ + faceZ;
+        
+        // Si está fuera de las coordenadas Y, siempre renderizar (cielo o void)
+        if (adjacentY < 0 || adjacentY >= Chunk.HEIGHT) {
+            return true;
+        }
+        
+        Block adjacentBlock;
+        
+        try {
+            // Si está dentro del mismo chunk, usar getBlock directo
+            if (adjacentX >= 0 && adjacentX < Chunk.WIDTH && adjacentZ >= 0 && adjacentZ < Chunk.DEPTH) {
+                adjacentBlock = chunk.getBlock(adjacentX, adjacentY, adjacentZ);
+            } else {
+                // Si está fuera del chunk, calcular coordenadas del mundo
+                int worldX = chunk.getChunkX() * Chunk.WIDTH + adjacentX;
+                int worldZ = chunk.getChunkZ() * Chunk.DEPTH + adjacentZ;
+                
+                // Usar getBlockInWorld que maneja el caso de bloques en chunks vecinos
+                adjacentBlock = chunk.getBlockInWorld(worldX, adjacentY, worldZ);
+            }
+            
+            // Si el bloque adyacente no es sólido u opaco, renderizar la cara
+            return adjacentBlock == null || !adjacentBlock.isOpaque();
+        } catch (Exception e) {
+            // Si algo sale mal (por ejemplo, el chunk adyacente no está cargado), 
+            // renderizar la cara para evitar agujeros
+            return true;
+        }
+    }
+    
+    /**
+     * Añade una cara de cubo con los vértices dados
+     * 
+     * @param vertices Lista de vértices a llenar
+     * @param indices Lista de índices a llenar
+     * @param textureCoords Lista de coordenadas de textura a llenar
+     * @param normals Lista de normales a llenar
+     * @param x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4 Coordenadas de los cuatro vértices de la cara
+     * @param nx,ny,nz Componentes del vector normal
+     * @param textureX,textureY Coordenada de textura en el atlas para esta cara de bloque
+     */
+    private void addFace(List<Float> vertices, List<Integer> indices, List<Float> textureCoords, List<Float> normals,
+                        float x1, float y1, float z1,
+                        float x2, float y2, float z2,
+                        float x3, float y3, float z3,
+                        float x4, float y4, float z4,
+                        float nx, float ny, float nz,
+                        float textureX, float textureY) {
+        
+        // Índice base para esta cara
+        int baseIndex = vertices.size() / 3;
+        
+        // Añadir vértices
+        vertices.add(x1); vertices.add(y1); vertices.add(z1);
+        vertices.add(x2); vertices.add(y2); vertices.add(z2);
+        vertices.add(x3); vertices.add(y3); vertices.add(z3);
+        vertices.add(x4); vertices.add(y4); vertices.add(z4);
+        
+        // Añadir índices (dos triángulos por cara)
+        indices.add(baseIndex);
+        indices.add(baseIndex + 1);
+        indices.add(baseIndex + 2);
+        
+        indices.add(baseIndex);
+        indices.add(baseIndex + 2);
+        indices.add(baseIndex + 3);
+        
+        // Calcular coordenadas de textura
+        float textureSize = 1.0f / 16.0f; // 16 texturas en el atlas
+        float texLeft = textureX * textureSize;
+        float texRight = texLeft + textureSize;
+        float texTop = textureY * textureSize;
+        float texBottom = texTop + textureSize;
+        
+        // Añadir coordenadas de textura para los 4 vértices
+        textureCoords.add(texLeft);  textureCoords.add(texBottom); // BL
+        textureCoords.add(texRight); textureCoords.add(texBottom); // BR
+        textureCoords.add(texRight); textureCoords.add(texTop);    // TR
+        textureCoords.add(texLeft);  textureCoords.add(texTop);    // TL
+        
+        // Añadir normales para cada vértice
+        for (int i = 0; i < 4; i++) {
+            normals.add(nx);
+            normals.add(ny);
+            normals.add(nz);
+        }
+    }
+    
+    /**
+     * Añade todas las caras visibles de un bloque a la malla
+     * 
+     * @param chunk El chunk actual
+     * @param blockX Coordenada X del bloque
+     * @param blockY Coordenada Y del bloque
+     * @param blockZ Coordenada Z del bloque
+     * @param vertices Lista de vértices a llenar
+     * @param indices Lista de índices a llenar
+     * @param textureCoords Lista de coordenadas de textura a llenar
+     * @param normals Lista de normales a llenar
+     * @param block El bloque a renderizar
+     */
+    private void addBlock(Chunk chunk, int blockX, int blockY, int blockZ, 
+                     List<Float> vertices, List<Integer> indices, 
+                     List<Float> textureCoords, List<Float> normals,
+                     Block block) {
+        
+        // Posición del bloque en el espacio del mundo
+        float worldX = blockX;
+        float worldY = blockY;
+        float worldZ = blockZ;
+        
+        // Tamaño del bloque
+        float size = 0.5f;
+        
+        // Cada cara del cubo tiene coordenadas diferentes para su textura
+        float topTexX = block.getTopTextureX();
+        float topTexY = block.getTopTextureY();
+        float sideTexX = block.getSideTextureX();
+        float sideTexY = block.getSideTextureY();
+        float bottomTexX = block.getBottomTextureX();
+        float bottomTexY = block.getBottomTextureY();
+        
+        // Añadir caras visibles (comprobando oclusión de cada cara)
+        
+        // Cara superior (+Y)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 1, 0)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX - size, worldY + size, worldZ - size,  // x1,y1,z1
+                worldX - size, worldY + size, worldZ + size,  // x2,y2,z2
+                worldX + size, worldY + size, worldZ + size,  // x3,y3,z3
+                worldX + size, worldY + size, worldZ - size,  // x4,y4,z4
+                0.0f, 1.0f, 0.0f,                             // nx,ny,nz (normal)
+                topTexX, topTexY                              // textureX,textureY
+            );
+        }
+        
+        // Cara inferior (-Y)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, -1, 0)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX - size, worldY - size, worldZ + size,  // x1,y1,z1
+                worldX - size, worldY - size, worldZ - size,  // x2,y2,z2
+                worldX + size, worldY - size, worldZ - size,  // x3,y3,z3
+                worldX + size, worldY - size, worldZ + size,  // x4,y4,z4
+                0.0f, -1.0f, 0.0f,                            // nx,ny,nz (normal)
+                bottomTexX, bottomTexY                        // textureX,textureY
+            );
+        }
+        
+        // Cara frontal (+Z)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 0, 1)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX - size, worldY - size, worldZ + size,  // x1,y1,z1
+                worldX + size, worldY - size, worldZ + size,  // x2,y2,z2
+                worldX + size, worldY + size, worldZ + size,  // x3,y3,z3
+                worldX - size, worldY + size, worldZ + size,  // x4,y4,z4
+                0.0f, 0.0f, 1.0f,                             // nx,ny,nz (normal)
+                sideTexX, sideTexY                            // textureX,textureY
+            );
+        }
+        
+        // Cara trasera (-Z)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 0, -1)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX + size, worldY - size, worldZ - size,  // x1,y1,z1
+                worldX - size, worldY - size, worldZ - size,  // x2,y2,z2
+                worldX - size, worldY + size, worldZ - size,  // x3,y3,z3
+                worldX + size, worldY + size, worldZ - size,  // x4,y4,z4
+                0.0f, 0.0f, -1.0f,                            // nx,ny,nz (normal)
+                sideTexX, sideTexY                            // textureX,textureY
+            );
+        }
+        
+        // Cara derecha (+X)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 1, 0, 0)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX + size, worldY - size, worldZ + size,  // x1,y1,z1
+                worldX + size, worldY - size, worldZ - size,  // x2,y2,z2
+                worldX + size, worldY + size, worldZ - size,  // x3,y3,z3
+                worldX + size, worldY + size, worldZ + size,  // x4,y4,z4
+                1.0f, 0.0f, 0.0f,                             // nx,ny,nz (normal)
+                sideTexX, sideTexY                            // textureX,textureY
+            );
+        }
+        
+        // Cara izquierda (-X)
+        if (shouldRenderFace(chunk, blockX, blockY, blockZ, -1, 0, 0)) {
+            addFace(vertices, indices, textureCoords, normals,
+                worldX - size, worldY - size, worldZ - size,  // x1,y1,z1
+                worldX - size, worldY - size, worldZ + size,  // x2,y2,z2
+                worldX - size, worldY + size, worldZ + size,  // x3,y3,z3
+                worldX - size, worldY + size, worldZ - size,  // x4,y4,z4
+                -1.0f, 0.0f, 0.0f,                            // nx,ny,nz (normal)
+                sideTexX, sideTexY                            // textureX,textureY
+            );
+        }
     }
 }

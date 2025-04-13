@@ -203,16 +203,31 @@ public class Chunk {
      * @return Bloque en la posición especificada, o aire si está fuera de límites
      */
     public Block getBlockInWorld(int worldX, int worldY, int worldZ) {
-        // Convertir espacio del mundo a espacio de chunk
-        int localX = worldX - (chunkX * WIDTH);
-        int localZ = worldZ - (chunkZ * DEPTH);
-        
-        // Si las coordenadas locales están fuera de este chunk, obtener del chunk apropiado
-        if (localX < 0 || localX >= WIDTH || localZ < 0 || localZ >= DEPTH || worldY < 0 || worldY >= HEIGHT) {
-            return world.getBlockAt(worldX, worldY, worldZ);
+        // Si las coordenadas Y están fuera de rango, devolver aire
+        if (worldY < 0 || worldY >= HEIGHT) {
+            return blockRegistry.getBlock(BlockRegistry.AIR_ID);
         }
         
-        return getBlock(localX, worldY, localZ);
+        // Convertir espacio del mundo a espacio de chunk
+        int chunkWorldX = chunkX * WIDTH;
+        int chunkWorldZ = chunkZ * DEPTH;
+        
+        int localX = worldX - chunkWorldX;
+        int localZ = worldZ - chunkWorldZ;
+        
+        // Si las coordenadas locales están dentro de este chunk, obtener el bloque directamente
+        if (localX >= 0 && localX < WIDTH && localZ >= 0 && localZ < DEPTH) {
+            return getBlock(localX, worldY, localZ);
+        } else {
+            // Fuera de este chunk, delegar al mundo para obtener el bloque correcto
+            try {
+                return world.getBlockAt(worldX, worldY, worldZ);
+            } catch (Exception e) {
+                // En caso de error (como chunks no cargados), devolver aire
+                System.err.println("Error obteniendo bloque en mundo: " + e.getMessage());
+                return blockRegistry.getBlock(BlockRegistry.AIR_ID);
+            }
+        }
     }
     
     /**

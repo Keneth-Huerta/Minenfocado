@@ -18,6 +18,14 @@ public class Block {
     // Order: UP, DOWN, FRONT, BACK, LEFT, RIGHT
     private final int[] textureIndices;
     
+    // Constants for face indices
+    public static final int FACE_UP = 0;
+    public static final int FACE_DOWN = 1;
+    public static final int FACE_FRONT = 2;
+    public static final int FACE_BACK = 3;
+    public static final int FACE_LEFT = 4;
+    public static final int FACE_RIGHT = 5;
+    
     /**
      * Creates a new block with the specified properties
      * 
@@ -77,6 +85,13 @@ public class Block {
     }
     
     /**
+     * Checks if the block is opaque (not transparent)
+     */
+    public boolean isOpaque() {
+        return !transparent;
+    }
+    
+    /**
      * Checks if the block is a liquid
      */
     public boolean isLiquid() {
@@ -91,6 +106,54 @@ public class Block {
      */
     public int getTextureIndex(int face) {
         return textureIndices[face];
+    }
+    
+    /**
+     * Gets the X texture coordinate for the top face
+     * @return X texture coordinate
+     */
+    public float getTopTextureX() {
+        return getTextureIndex(FACE_UP) % 16;  // Assuming 16 textures per row in atlas
+    }
+    
+    /**
+     * Gets the Y texture coordinate for the top face
+     * @return Y texture coordinate
+     */
+    public float getTopTextureY() {
+        return getTextureIndex(FACE_UP) / 16;  // Assuming 16 textures per row in atlas
+    }
+    
+    /**
+     * Gets the X texture coordinate for side faces (using FRONT face)
+     * @return X texture coordinate
+     */
+    public float getSideTextureX() {
+        return getTextureIndex(FACE_FRONT) % 16;  // Assuming 16 textures per row in atlas
+    }
+    
+    /**
+     * Gets the Y texture coordinate for side faces (using FRONT face)
+     * @return Y texture coordinate
+     */
+    public float getSideTextureY() {
+        return getTextureIndex(FACE_FRONT) / 16;  // Assuming 16 textures per row in atlas
+    }
+    
+    /**
+     * Gets the X texture coordinate for the bottom face
+     * @return X texture coordinate
+     */
+    public float getBottomTextureX() {
+        return getTextureIndex(FACE_DOWN) % 16;  // Assuming 16 textures per row in atlas
+    }
+    
+    /**
+     * Gets the Y texture coordinate for the bottom face
+     * @return Y texture coordinate
+     */
+    public float getBottomTextureY() {
+        return getTextureIndex(FACE_DOWN) / 16;  // Assuming 16 textures per row in atlas
     }
     
     /**

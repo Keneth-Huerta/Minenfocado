@@ -31,6 +31,7 @@ import main.java.com.minefocado.game.player.Player;
 import main.java.com.minefocado.game.world.World;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 import main.java.com.minefocado.game.world.chunk.ChunkMesh;
+import main.java.com.minefocado.game.render.CrosshairRenderer;
 
 /**
  * Clase principal del juego Minefocado
@@ -80,6 +81,9 @@ public class MinefocadoGame {
     private float deltaTime;
     private long lastFrameTime;
 
+    // Punto de mira (crosshair) para indicar dónde se está apuntando
+    private CrosshairRenderer crosshairRenderer;
+
     public void run() {
         System.out.println("Starting Minefocado Game using LWJGL " + Version.getVersion());
 
@@ -97,6 +101,11 @@ public class MinefocadoGame {
         // Clean up game resources
         if (world != null) {
             world.cleanup();
+        }
+        
+        // Limpiar recursos del punto de mira
+        if (crosshairRenderer != null) {
+            crosshairRenderer.cleanup();
         }
     }
 
@@ -212,6 +221,9 @@ public class MinefocadoGame {
             // Inicializar matriz de proyección de la cámara
             player.getCamera().updateProjectionMatrix(WIDTH, HEIGHT);
             
+            // Inicializar punto de mira (crosshair)
+            crosshairRenderer = new CrosshairRenderer();
+            
             // Inicializar temporización del juego
             lastFrameTime = System.nanoTime();
             
@@ -304,6 +316,11 @@ public class MinefocadoGame {
         
         // Renderizar mundo (chunks)
         world.render(projectionMatrix, viewMatrix, playerPos);
+        
+        // Renderizar el punto de mira (crosshair) en el centro de la pantalla
+        if (crosshairRenderer != null) {
+            crosshairRenderer.render();
+        }
         
         // Renderizar UI y HUD (se implementará más tarde)
         

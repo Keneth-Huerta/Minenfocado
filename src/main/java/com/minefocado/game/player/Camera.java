@@ -5,62 +5,62 @@ import org.joml.Vector3f;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * Represents the first-person camera in the game.
- * Handles positioning, rotation, and view/projection matrices.
+ * Representa la cámara en primera persona en el juego.
+ * Maneja posicionamiento, rotación, y matrices de vista/proyección.
  */
 public class Camera {
-    // Camera position in world space
+    // Posición de la cámara en el espacio del mundo
     private final Vector3f position;
     
-    // Camera orientation
-    private float yaw;   // Horizontal rotation (left/right)
-    private float pitch; // Vertical rotation (up/down)
+    // Orientación de la cámara
+    private float yaw;   // Rotación horizontal (izquierda/derecha)
+    private float pitch; // Rotación vertical (arriba/abajo)
     
-    // View matrix (updated when camera changes)
+    // Matriz de vista (actualizada cuando cambia la cámara)
     private final Matrix4f viewMatrix;
     
-    // Projection matrix (updated when window resizes)
+    // Matriz de proyección (actualizada cuando se redimensiona la ventana)
     private final Matrix4f projectionMatrix;
     
-    // Field of view in degrees
+    // Campo de visión en grados
     private float fov = 70.0f;
     
-    // Near and far planes for the projection
+    // Planos cercano y lejano para la proyección
     private static final float Z_NEAR = 0.1f;
     private static final float Z_FAR = 1000.0f;
     
-    // For smooth camera movement
+    // Para movimiento suave de cámara
     private static final float MOVEMENT_SPEED = 5.0f;
     private static final float MOUSE_SENSITIVITY = 0.1f;
     
     /**
-     * Creates a new camera at the specified position
+     * Crea una nueva cámara en la posición especificada
      * 
-     * @param startX Initial X position
-     * @param startY Initial Y position
-     * @param startZ Initial Z position
+     * @param startX Posición X inicial
+     * @param startY Posición Y inicial
+     * @param startZ Posición Z inicial
      */
     public Camera(float startX, float startY, float startZ) {
         this.position = new Vector3f(startX, startY, startZ);
-        this.yaw = 0.0f;    // Default: looking along negative Z
-        this.pitch = 0.0f;  // Default: looking straight ahead
+        this.yaw = 0.0f;    // Por defecto: mirando a lo largo del eje Z negativo
+        this.pitch = 0.0f;  // Por defecto: mirando recto al frente
         this.viewMatrix = new Matrix4f();
         this.projectionMatrix = new Matrix4f();
         
-        // Initialize matrices
+        // Inicializar matrices
         updateViewMatrix();
     }
     
     /**
-     * Updates the camera position based on player input
+     * Actualiza la posición de la cámara basada en la entrada del jugador
      * 
-     * @param forward Whether W key is pressed
-     * @param backward Whether S key is pressed
-     * @param left Whether A key is pressed
-     * @param right Whether D key is pressed
-     * @param up Whether Space key is pressed
-     * @param down Whether Shift key is pressed
-     * @param deltaTime Time since last frame in seconds
+     * @param forward Si la tecla W está presionada
+     * @param backward Si la tecla S está presionada
+     * @param left Si la tecla A está presionada
+     * @param right Si la tecla D está presionada
+     * @param up Si la tecla Espacio está presionada
+     * @param down Si la tecla Shift está presionada
+     * @param deltaTime Tiempo desde el último frame en segundos
      */
     public void move(boolean forward, boolean backward, boolean left, 
                     boolean right, boolean up, boolean down, float deltaTime) {
@@ -93,22 +93,22 @@ public class Camera {
             position.y -= speed;
         }
         
-        // Update view matrix after position change
+        // Actualizar matriz de vista después del cambio de posición
         updateViewMatrix();
     }
     
     /**
-     * Processes mouse movement to rotate the camera view
+     * Procesa el movimiento del ratón para rotar la vista de la cámara
      * 
-     * @param deltaX Change in mouse X position
-     * @param deltaY Change in mouse Y position
+     * @param deltaX Cambio en la posición X del ratón
+     * @param deltaY Cambio en la posición Y del ratón
      */
     public void rotate(float deltaX, float deltaY) {
-        // Update yaw (horizontal rotation)
+        // Actualizar yaw (rotación horizontal)
         yaw += deltaX * MOUSE_SENSITIVITY;
         
-        // Update pitch (vertical rotation) with limits to avoid gimbal lock
-        // FIX: Changed from -= to += to correct inverted vertical camera movement
+        // Actualizar pitch (rotación vertical) con límites para evitar el bloqueo gimbal
+        // CORRECCIÓN: Cambiado de -= a += para corregir el movimiento vertical de cámara invertido
         pitch += deltaY * MOUSE_SENSITIVITY;
         if (pitch > 89.0f) {
             pitch = 89.0f;
@@ -117,32 +117,32 @@ public class Camera {
             pitch = -89.0f;
         }
         
-        // Update the view matrix after orientation change
+        // Actualizar la matriz de vista después del cambio de orientación
         updateViewMatrix();
     }
     
     /**
-     * Updates the view matrix based on current position and orientation
+     * Actualiza la matriz de vista basada en la posición y orientación actual
      */
     private void updateViewMatrix() {
-        // Reset the view matrix
+        // Resetear la matriz de vista
         viewMatrix.identity();
         
-        // Apply pitch rotation
+        // Aplicar rotación de pitch
         viewMatrix.rotate((float) Math.toRadians(pitch), 1.0f, 0.0f, 0.0f);
         
-        // Apply yaw rotation
+        // Aplicar rotación de yaw
         viewMatrix.rotate((float) Math.toRadians(yaw), 0.0f, 1.0f, 0.0f);
         
-        // Apply translation (inverse of camera position)
+        // Aplicar traslación (inversa de la posición de la cámara)
         viewMatrix.translate(-position.x, -position.y, -position.z);
     }
     
     /**
-     * Updates the projection matrix for the specified window dimensions
+     * Actualiza la matriz de proyección para las dimensiones de ventana especificadas
      * 
-     * @param width Window width
-     * @param height Window height
+     * @param width Ancho de la ventana
+     * @param height Alto de la ventana
      */
     public void updateProjectionMatrix(int width, int height) {
         float aspectRatio = (float) width / height;
@@ -151,18 +151,18 @@ public class Camera {
     }
     
     /**
-     * Gets the camera's current position
+     * Obtiene la posición actual de la cámara
      */
     public Vector3f getPosition() {
         return new Vector3f(position);
     }
     
     /**
-     * Sets the camera position
+     * Establece la posición de la cámara
      * 
-     * @param x New X position
-     * @param y New Y position
-     * @param z New Z position
+     * @param x Nueva posición X
+     * @param y Nueva posición Y
+     * @param z Nueva posición Z
      */
     public void setPosition(float x, float y, float z) {
         position.set(x, y, z);
@@ -170,24 +170,24 @@ public class Camera {
     }
     
     /**
-     * Gets the camera's current yaw rotation
+     * Obtiene la rotación yaw actual de la cámara
      */
     public float getYaw() {
         return yaw;
     }
     
     /**
-     * Gets the camera's current pitch rotation
+     * Obtiene la rotación pitch actual de la cámara
      */
     public float getPitch() {
         return pitch;
     }
     
     /**
-     * Sets the camera orientation
+     * Establece la orientación de la cámara
      * 
-     * @param yaw New yaw angle (horizontal)
-     * @param pitch New pitch angle (vertical)
+     * @param yaw Nuevo ángulo yaw (horizontal)
+     * @param pitch Nuevo ángulo pitch (vertical)
      */
     public void setRotation(float yaw, float pitch) {
         this.yaw = yaw;
@@ -196,30 +196,30 @@ public class Camera {
     }
     
     /**
-     * Gets the view matrix
+     * Obtiene la matriz de vista
      */
     public Matrix4f getViewMatrix() {
         return viewMatrix;
     }
     
     /**
-     * Gets the projection matrix
+     * Obtiene la matriz de proyección
      */
     public Matrix4f getProjectionMatrix() {
         return projectionMatrix;
     }
     
     /**
-     * Gets the current field of view in degrees
+     * Obtiene el campo de visión actual en grados
      */
     public float getFov() {
         return fov;
     }
     
     /**
-     * Sets a new field of view in degrees
+     * Establece un nuevo campo de visión en grados
      * 
-     * @param fov The new field of view (between 1 and 120)
+     * @param fov El nuevo campo de visión (entre 1 y 120)
      */
     public void setFov(float fov) {
         if (fov >= 1.0f && fov <= 120.0f) {

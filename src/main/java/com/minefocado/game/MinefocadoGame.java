@@ -33,17 +33,17 @@ import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 import main.java.com.minefocado.game.world.chunk.ChunkMesh;
 
 /**
- * Main game class for the Minefocado game
- * A Minecraft-like voxel game with terrain generation and player interaction.
+ * Clase principal del juego Minefocado
+ * Un juego de vóxeles tipo Minecraft con generación de terreno e interacción de jugador.
  */
 public class MinefocadoGame {
     
-    // Static queue for mesh cleanup operations from background threads
+    // Cola estática para operaciones de limpieza de mallas desde hilos en segundo plano
     private static final List<ChunkMesh> meshCleanupQueue = Collections.synchronizedList(new ArrayList<>());
     
     /**
-     * Add a mesh to the cleanup queue to be safely deleted on the main thread
-     * @param mesh The mesh to be cleaned up
+     * Añade una malla a la cola de limpieza para ser eliminada de forma segura en el hilo principal
+     * @param mesh La malla que se va a limpiar
      */
     public static void queueMeshForCleanup(ChunkMesh mesh) {
         if (mesh != null) {
@@ -55,24 +55,24 @@ public class MinefocadoGame {
         new MinefocadoGame().run();
     }
 
-    // Window properties
+    // Propiedades de la ventana
     private static final int WIDTH = 1280;
     private static final int HEIGHT = 720;
-    private static final String TITLE = "Minefocado - Minecraft Clone";
+    private static final String TITLE = "Minefocado - Clon de Minecraft";
 
-    // The window handle
+    // Manejador de la ventana
     private long window;
     
-    // Game state
+    // Estado del juego
     private World world;
     private Player player;
     
-    // Input handling
+    // Manejo de entrada
     private boolean[] keyPressed = new boolean[GLFW_KEY_LAST + 1];
     private double lastMouseX, lastMouseY;
     private boolean mouseGrabbed = true;
     
-    // Game timing
+    // Temporización del juego
     private float deltaTime;
     private long lastFrameTime;
 
@@ -97,14 +97,14 @@ public class MinefocadoGame {
     }
 
     private void init() {
-        // Setup an error callback
+        // Configurar callback de error
         GLFWErrorCallback.createPrint(System.err).set();
 
-        // Initialize GLFW
+        // Inicializar GLFW
         if (!glfwInit())
             throw new IllegalStateException("Unable to initialize GLFW");
 
-        // Configure GLFW window properties
+        // Configurar propiedades de la ventana GLFW
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -112,62 +112,62 @@ public class MinefocadoGame {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         
-        // Create the window
+        // Crear la ventana
         window = glfwCreateWindow(WIDTH, HEIGHT, TITLE, NULL, NULL);
         if (window == NULL)
             throw new RuntimeException("Failed to create the GLFW window");
 
-        // Setup key callback
+        // Configurar callback de teclado
         glfwSetKeyCallback(window, this::handleKeyInput);
         
-        // Setup mouse callbacks
+        // Configurar callbacks de ratón
         glfwSetCursorPosCallback(window, this::handleMouseMove);
         glfwSetMouseButtonCallback(window, this::handleMouseButton);
         glfwSetScrollCallback(window, this::handleScroll);
         
-        // Setup window resize callback
+        // Configurar callback de redimensionamiento de ventana
         glfwSetFramebufferSizeCallback(window, this::handleWindowResize);
 
-        // Get the thread stack and push a new frame
+        // Obtener la pila de hilos y empujar un nuevo marco
         try (MemoryStack stack = stackPush()) {
             IntBuffer pWidth = stack.mallocInt(1);
             IntBuffer pHeight = stack.mallocInt(1);
 
-            // Get the window size passed to glfwCreateWindow
+            // Obtener el tamaño de la ventana pasado a glfwCreateWindow
             glfwGetWindowSize(window, pWidth, pHeight);
 
-            // Get the resolution of the primary monitor
+            // Obtener la resolución del monitor principal
             GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
-            // Center the window
+            // Centrar la ventana
             glfwSetWindowPos(
                     window,
                     (vidmode.width() - pWidth.get(0)) / 2,
                     (vidmode.height() - pHeight.get(0)) / 2
             );
-        } // the stack frame is popped automatically
+        } // el marco de la pila se elimina automáticamente
 
-        // Make the OpenGL context current
+        // Hacer que el contexto OpenGL sea el actual
         glfwMakeContextCurrent(window);
         
-        // Enable v-sync
+        // Habilitar v-sync
         glfwSwapInterval(1);
         
-        // Capture the cursor for first-person controls
+        // Capturar el cursor para controles en primera persona
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-        // Make the window visible
+        // Hacer la ventana visible
         glfwShowWindow(window);
         
-        // Initialize OpenGL
+        // Inicializar OpenGL
         GL.createCapabilities();
         
-        // Configure global OpenGL state
+        // Configurar estado global de OpenGL
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         
-        // Initialize game components
+        // Inicializar componentes del juego
         initGame();
     }
     
@@ -176,7 +176,7 @@ public class MinefocadoGame {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Fondo negro para la pantalla de carga
         
-        // Inicializar block registry first (singleton)
+        // Inicializar primero el registro de bloques (singleton)
         BlockRegistry blockRegistry = BlockRegistry.getInstance();
         // Ensure block registry is initialized before creating the world
         System.out.println("Block registry initialized with " + blockRegistry.getBlockCount() + " blocks");
@@ -186,7 +186,7 @@ public class MinefocadoGame {
             renderLoadingScreen("Generando mundo...");
             glfwSwapBuffers(window);
             
-            // Create world with random seed
+            // Crear mundo con semilla aleatoria
             long seed = System.currentTimeMillis();
             world = new World(seed);
             System.out.println("World initialized with seed: " + seed);
@@ -199,16 +199,16 @@ public class MinefocadoGame {
             renderLoadingScreen("Generando personaje...");
             glfwSwapBuffers(window);
             
-            // Create player at position (0, 100, 0) - well above ground level to ensure no spawning inside terrain
+            // Crear jugador en la posición (0, 100, 0) - muy por encima del nivel del suelo para asegurar que no aparezca dentro del terreno
             player = new Player(0, 100, 0, world);
             
             // Activar modo de vuelo por defecto
             player.toggleFlying();
             
-            // Initialize camera projection matrix
+            // Inicializar matriz de proyección de la cámara
             player.getCamera().updateProjectionMatrix(WIDTH, HEIGHT);
             
-            // Initialize game timing
+            // Inicializar temporización del juego
             lastFrameTime = System.nanoTime();
             
         } catch (Exception e) {
@@ -234,10 +234,10 @@ public class MinefocadoGame {
     }
 
     private void loop() {
-        // Run the rendering loop until the user has attempted to close
-        // the window or has pressed the ESCAPE key.
+        // Ejecutar el bucle de renderizado hasta que el usuario intente cerrar
+        // la ventana o haya presionado la tecla ESCAPE.
         while (!glfwWindowShouldClose(window)) {
-            // Calculate delta time
+            // Calcular delta time
             long currentTime = System.nanoTime();
             deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f;
             lastFrameTime = currentTime;
@@ -245,16 +245,16 @@ public class MinefocadoGame {
             // Cap deltaTime to prevent physics glitches after pause/breakpoint
             if (deltaTime > 0.1f) deltaTime = 0.1f;
             
-            // Process input
+            // Procesar entrada
             processInput();
             
-            // Update game state
+            // Actualizar estado del juego
             update();
             
-            // Process any pending mesh cleanups (must be done on main thread)
+            // Procesar cualquier limpieza de malla pendiente (debe hacerse en el hilo principal)
             processMeshCleanupQueue();
             
-            // Render frame
+            // Renderizar frame
             render();
             
             // Poll for window events
@@ -263,7 +263,7 @@ public class MinefocadoGame {
     }
     
     /**
-     * Process any pending mesh cleanups on the main thread with OpenGL context
+     * Procesa cualquier limpieza de malla pendiente en el hilo principal con el contexto OpenGL
      */
     private void processMeshCleanupQueue() {
         synchronized (meshCleanupQueue) {
@@ -279,36 +279,36 @@ public class MinefocadoGame {
     }
     
     private void update() {
-        // Update player (physics, collisions, etc.)
+        // Actualizar jugador (física, colisiones, etc.)
         player.update(deltaTime);
         
-        // Update world (chunk loading/unloading)
+        // Actualizar mundo (carga/descarga de chunks)
         Vector3f playerPos = player.getPosition();
         world.update(playerPos.x, playerPos.z);
         world.updateChunkMeshes();
     }
     
     private void render() {
-        // Clear the framebuffer
-        glClearColor(0.529f, 0.808f, 0.922f, 0.0f); // Sky blue color
+        // Limpiar el framebuffer
+        glClearColor(0.529f, 0.808f, 0.922f, 0.0f); // Color azul cielo
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // Get camera matrices for rendering
+        // Obtener matrices de cámara para renderizado
         Matrix4f projectionMatrix = player.getCamera().getProjectionMatrix();
         Matrix4f viewMatrix = player.getCamera().getViewMatrix();
         Vector3f playerPos = player.getPosition();
         
-        // Render world (chunks)
+        // Renderizar mundo (chunks)
         world.render(projectionMatrix, viewMatrix, playerPos);
         
-        // Render UI and HUD (will be implemented later)
+        // Renderizar UI y HUD (se implementará más tarde)
         
-        // Swap the color buffers
+        // Intercambiar los buffers de color
         glfwSwapBuffers(window);
     }
     
     private void processInput() {
-        // Process movement input
+        // Procesar entrada de movimiento
         boolean forward = keyPressed[GLFW_KEY_W];
         boolean backward = keyPressed[GLFW_KEY_S];
         boolean left = keyPressed[GLFW_KEY_A];
@@ -320,24 +320,24 @@ public class MinefocadoGame {
     }
     
     private void handleKeyInput(long window, int key, int scancode, int action, int mods) {
-        // Close the game when Escape is pressed
+        // Cerrar el juego cuando se presiona Escape
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
             return;
         }
         
-        // Track key press/release state
+        // Rastrear estado de presión/liberación de teclas
         if (key >= 0 && key <= GLFW_KEY_LAST) {
             if (action == GLFW_PRESS) {
                 keyPressed[key] = true;
                 
-                // Handle hotbar selection with number keys
+                // Manejar selección de hotbar con teclas numéricas
                 if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
                     int slot = key - GLFW_KEY_1;
                     player.setHotbarSelection(slot);
                 }
                 
-                // Toggle flying mode with F key
+                // Alternar modo vuelo con tecla F
                 if (key == GLFW_KEY_F) {
                     player.toggleFlying();
                     // Mostrar mensaje según el estado de vuelo
@@ -354,18 +354,18 @@ public class MinefocadoGame {
     }
     
     private void handleMouseMove(long window, double xpos, double ypos) {
-        // Only rotate camera if mouse is grabbed
+        // Solo rotar la cámara si el ratón está capturado
         if (mouseGrabbed) {
-            // Calculate mouse delta
+            // Calcular delta del ratón
             double deltaX = xpos - lastMouseX;
             double deltaY = ypos - lastMouseY;
             
-            // First frame has no deltas
+            // El primer frame no tiene deltas
             if (lastMouseX != 0 && lastMouseY != 0) {
                 player.getCamera().rotate((float) deltaX, (float) deltaY);
             }
             
-            // Update last known position
+            // Actualizar última posición conocida
             lastMouseX = xpos;
             lastMouseY = ypos;
         }
@@ -373,24 +373,24 @@ public class MinefocadoGame {
     
     private void handleMouseButton(long window, int button, int action, int mods) {
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-            // Break block with left mouse button
+            // Romper bloque con botón izquierdo del ratón
             player.breakBlock();
         } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-            // Place block with right mouse button
+            // Colocar bloque con botón derecho del ratón
             player.placeBlock();
         }
     }
     
     private void handleScroll(long window, double xoffset, double yoffset) {
-        // Scroll wheel changes hotbar selection
+        // La rueda de desplazamiento cambia la selección de la barra de acceso rápido
         player.changeHotbarSelection((int) -yoffset);
     }
     
     private void handleWindowResize(long window, int width, int height) {
-        // Update OpenGL viewport
+        // Actualizar viewport de OpenGL
         glViewport(0, 0, width, height);
         
-        // Update camera projection matrix
+        // Actualizar matriz de proyección de la cámara
         player.getCamera().updateProjectionMatrix(width, height);
     }
 }

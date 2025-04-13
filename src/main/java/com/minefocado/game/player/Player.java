@@ -7,60 +7,60 @@ import main.java.com.minefocado.game.world.blocks.Block;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 
 /**
- * Represents the player in the game world.
- * Handles player movement, physics, collision, and interactions with the world.
+ * Representa al jugador en el mundo del juego.
+ * Maneja el movimiento del jugador, física, colisión, e interacciones con el mundo.
  */
 public class Player {
-    // Player position in world space
+    // Posición del jugador en el espacio del mundo
     private final Vector3f position;
     
-    // Player velocity
+    // Velocidad del jugador
     private final Vector3f velocity;
     
-    // Player dimensions (hitbox)
+    // Dimensiones del jugador (caja de colisión)
     private static final float WIDTH = 0.6f;
     private static final float HEIGHT = 1.8f;
     
-    // Player camera (first-person view)
+    // Cámara del jugador (vista en primera persona)
     private final Camera camera;
     
-    // Physics constants
+    // Constantes físicas
     private static final float GRAVITY = 20.0f;
     private static final float JUMP_FORCE = 8.0f;
     private static final float MOVEMENT_SPEED = 4.5f;
     private static final float FLYING_SPEED = 10.0f;
     
-    // Reference to the game world
+    // Referencia al mundo del juego
     private final World world;
     
-    // Player state
+    // Estado del jugador
     private boolean onGround;
     private boolean isFlying;
     private int selectedHotbarSlot;
     private final int[] hotbar;
     
-    // Ray casting constants for block interaction
+    // Constantes de lanzamiento de rayos para interacción con bloques
     private static final float REACH_DISTANCE = 5.0f;
     private static final float RAY_STEP = 0.05f;
     
     /**
-     * Creates a new player at the specified position in the world
+     * Crea un nuevo jugador en la posición especificada en el mundo
      * 
-     * @param x Starting X position
-     * @param y Starting Y position
-     * @param z Starting Z position
-     * @param world The game world
+     * @param x Posición X inicial
+     * @param y Posición Y inicial
+     * @param z Posición Z inicial
+     * @param world El mundo del juego
      */
     public Player(float x, float y, float z, World world) {
         this.position = new Vector3f(x, y, z);
         this.velocity = new Vector3f(0, 0, 0);
-        this.camera = new Camera(x, y + HEIGHT * 0.85f, z); // Eye level
+        this.camera = new Camera(x, y + HEIGHT * 0.85f, z); // Nivel de los ojos
         this.world = world;
         this.onGround = false;
         this.isFlying = false;
         this.selectedHotbarSlot = 0;
         
-        // Initialize hotbar with block types (IDs)
+        // Inicializar hotbar con tipos de bloques (IDs)
         this.hotbar = new int[9];
         hotbar[0] = BlockRegistry.STONE_ID;
         hotbar[1] = BlockRegistry.DIRT_ID;
@@ -68,41 +68,41 @@ public class Player {
         hotbar[3] = BlockRegistry.SAND_ID;
         hotbar[4] = BlockRegistry.WOOD_ID;
         hotbar[5] = BlockRegistry.LEAVES_ID;
-        hotbar[6] = 0; // Empty slot
-        hotbar[7] = 0; // Empty slot
-        hotbar[8] = 0; // Empty slot
+        hotbar[6] = 0; // Ranura vacía
+        hotbar[7] = 0; // Ranura vacía
+        hotbar[8] = 0; // Ranura vacía
     }
     
     /**
-     * Updates player physics, position, and camera
+     * Actualiza la física del jugador, posición y cámara
      * 
-     * @param deltaTime Time elapsed since the last frame
+     * @param deltaTime Tiempo transcurrido desde el último frame
      */
     public void update(float deltaTime) {
-        // Apply gravity unless flying
+        // Aplicar gravedad a menos que esté volando
         if (!isFlying) {
             velocity.y -= GRAVITY * deltaTime;
         } else {
-            // Reset vertical velocity when flying
+            // Restablecer velocidad vertical al volar
             velocity.y *= 0.9f;
         }
         
-        // Limit terminal velocity
+        // Limitar velocidad terminal
         if (velocity.y < -30) {
             velocity.y = -30;
         }
         
-        // Apply velocity to position with collision detection
+        // Aplicar velocidad a la posición con detección de colisiones
         moveWithCollision(deltaTime);
         
-        // Update camera position to follow the player's head
+        // Actualizar posición de la cámara para seguir la cabeza del jugador
         camera.setPosition(
             position.x,
-            position.y + HEIGHT * 0.85f, // Eye level
+            position.y + HEIGHT * 0.85f, // Nivel de los ojos
             position.z
         );
         
-        // If player falls below world, teleport to spawn
+        // Si el jugador cae por debajo del mundo, teletransportar al spawn
         if (position.y < -10) {
             position.set(0, 100, 0);
             velocity.set(0, 0, 0);
@@ -111,36 +111,36 @@ public class Player {
     }
     
     /**
-     * Handles player movement input
+     * Maneja la entrada de movimiento del jugador
      * 
-     * @param forward W key pressed
-     * @param backward S key pressed
-     * @param left A key pressed
-     * @param right D key pressed
-     * @param jump Space key pressed
-     * @param crouch Shift key pressed
-     * @param deltaTime Time since last frame
+     * @param forward Tecla W presionada
+     * @param backward Tecla S presionada
+     * @param left Tecla A presionada
+     * @param right Tecla D presionada
+     * @param jump Tecla Espacio presionada
+     * @param crouch Tecla Shift presionada
+     * @param deltaTime Tiempo desde el último frame
      */
     public void handleMovement(boolean forward, boolean backward, boolean left,
                                boolean right, boolean jump, boolean crouch,
                                float deltaTime) {
-        // Calculate movement direction based on camera orientation
+        // Calcular dirección de movimiento basada en orientación de cámara
         float yaw = (float) Math.toRadians(camera.getYaw());
         
-        // Calculate forward and right vectors
+        // Calcular vectores hacia adelante y derecha
         float fx = (float) Math.sin(yaw);
         float fz = (float) -Math.cos(yaw);
         float rx = fz;
         float rz = -fx;
         
-        // Reset horizontal velocity
+        // Restablecer velocidad horizontal
         velocity.x = 0;
         velocity.z = 0;
         
-        // Calculate current speed (different for flying mode)
+        // Calcular velocidad actual (diferente para modo vuelo)
         float speed = isFlying ? FLYING_SPEED : MOVEMENT_SPEED;
         
-        // Apply movement input
+        // Aplicar entrada de movimiento
         if (forward) {
             velocity.x += fx * speed;
             velocity.z += fz * speed;
@@ -158,7 +158,7 @@ public class Player {
             velocity.z += rz * speed;
         }
         
-        // Handle jumping (only when on ground or flying)
+        // Manejar salto (solo cuando está en el suelo o volando)
         if (jump) {
             if (onGround && !isFlying) {
                 velocity.y = JUMP_FORCE;
@@ -168,47 +168,47 @@ public class Player {
             }
         }
         
-        // Handle crouching/descending
+        // Manejar agacharse/descender
         if (crouch && isFlying) {
             velocity.y = -FLYING_SPEED;
         }
     }
     
     /**
-     * Moves the player with collision detection
+     * Mueve al jugador con detección de colisiones
      * 
-     * @param deltaTime Time since last frame
+     * @param deltaTime Tiempo desde el último frame
      */
     private void moveWithCollision(float deltaTime) {
-        // Save original position for restoring in case of collision
+        // Guardar posición original para restaurar en caso de colisión
         float originalX = position.x;
         float originalY = position.y;
         float originalZ = position.z;
         
-        // Move in X direction
+        // Mover en dirección X
         position.x += velocity.x * deltaTime;
         if (checkCollision()) {
             position.x = originalX;
             velocity.x = 0;
         }
         
-        // Move in Y direction
+        // Mover en dirección Y
         position.y += velocity.y * deltaTime;
         if (checkCollision()) {
             position.y = originalY;
             
-            // If moving downward and collision, we've hit the ground
+            // Si se mueve hacia abajo y hay colisión, hemos golpeado el suelo
             if (velocity.y < 0) {
                 onGround = true;
             }
             
             velocity.y = 0;
         } else {
-            // We're in air if we can move vertically
+            // Estamos en el aire si podemos movernos verticalmente
             onGround = false;
         }
         
-        // Move in Z direction
+        // Mover en dirección Z
         position.z += velocity.z * deltaTime;
         if (checkCollision()) {
             position.z = originalZ;
@@ -217,12 +217,12 @@ public class Player {
     }
     
     /**
-     * Checks if the player is colliding with any solid blocks
+     * Comprueba si el jugador está colisionando con algún bloque sólido
      * 
-     * @return true if collision detected, false otherwise
+     * @return true si se detecta colisión, false en caso contrario
      */
     private boolean checkCollision() {
-        // Get block positions that overlap with player hitbox
+        // Obtener posiciones de bloques que se superponen con la caja de colisión del jugador
         int minX = (int) Math.floor(position.x - WIDTH / 2);
         int maxX = (int) Math.floor(position.x + WIDTH / 2);
         int minY = (int) Math.floor(position.y);
@@ -230,7 +230,7 @@ public class Player {
         int minZ = (int) Math.floor(position.z - WIDTH / 2);
         int maxZ = (int) Math.floor(position.z + WIDTH / 2);
         
-        // Check each potential block for collision
+        // Comprobar cada bloque potencial para colisión
         for (int y = minY; y <= maxY; y++) {
             for (int x = minX; x <= maxX; x++) {
                 for (int z = minZ; z <= maxZ; z++) {
@@ -246,52 +246,52 @@ public class Player {
     }
     
     /**
-     * Breaks the block the player is looking at
+     * Rompe el bloque que el jugador está mirando
      */
     public void breakBlock() {
-        // Cast a ray to find the block
+        // Lanzar un rayo para encontrar el bloque
         BlockRayResult result = castRay(true);
         if (result != null && result.blockType != BlockRegistry.AIR_ID) {
-            // Replace with air
+            // Reemplazar con aire
             world.setBlockAt(result.x, result.y, result.z, BlockRegistry.AIR_ID);
         }
     }
     
     /**
-     * Places a block adjacent to where the player is looking
+     * Coloca un bloque adyacente a donde el jugador está mirando
      */
     public void placeBlock() {
-        // Cast a ray to find the face to place against
+        // Lanzar un rayo para encontrar la cara contra la que colocar
         BlockRayResult result = castRay(true);
         if (result != null && result.faceX != 0 || result.faceY != 0 || result.faceZ != 0) {
-            // Calculate position to place the new block
+            // Calcular posición para colocar el nuevo bloque
             int placeX = result.x + result.faceX;
             int placeY = result.y + result.faceY;
             int placeZ = result.z + result.faceZ;
             
-            // Get selected block from hotbar
+            // Obtener bloque seleccionado del hotbar
             int blockId = hotbar[selectedHotbarSlot];
             
-            // Don't place if selected slot is empty or the spot is occupied
+            // No colocar si la ranura seleccionada está vacía o el lugar está ocupado
             if (blockId != 0 && world.getBlockAt(placeX, placeY, placeZ).getId() == BlockRegistry.AIR_ID) {
-                // Check for collision with player first
+                // Comprobar colisión con jugador primero
                 float px = position.x;
                 float py = position.y;
                 float pz = position.z;
                 
-                // Check if placing would cause player to be stuck
+                // Comprobar si colocar causaría que el jugador quede atrapado
                 position.x = (placeX + 0.5f);
                 position.y = (placeY + 0.5f);
                 position.z = (placeZ + 0.5f);
                 
                 boolean wouldCollide = checkCollision();
                 
-                // Restore position
+                // Restaurar posición
                 position.x = px;
                 position.y = py;
                 position.z = pz;
                 
-                // Only place if it won't cause player to get stuck
+                // Solo colocar si no causará que el jugador quede atrapado
                 if (!wouldCollide) {
                     world.setBlockAt(placeX, placeY, placeZ, blockId);
                 }
@@ -300,17 +300,17 @@ public class Player {
     }
     
     /**
-     * Casts a ray from the player's viewpoint and returns the first block hit
+     * Lanza un rayo desde el punto de vista del jugador y devuelve el primer bloque golpeado
      * 
-     * @param includeOutsideInfo Whether to include face normal information
-     * @return Information about the block hit, or null if none hit
+     * @param includeOutsideInfo Si se debe incluir información de la cara normal
+     * @return Información sobre el bloque golpeado, o null si no se golpeó ninguno
      */
     private BlockRayResult castRay(boolean includeOutsideInfo) {
-        // Get ray origin (camera position) and direction (camera front vector)
+        // Obtener origen del rayo (posición de la cámara) y dirección (vector frontal de la cámara)
         Vector3f origin = camera.getPosition();
         Vector3f direction = new Vector3f();
         
-        // Calculate direction vector from camera angles
+        // Calcular vector de dirección a partir de los ángulos de la cámara
         float yaw = (float) Math.toRadians(camera.getYaw());
         float pitch = (float) Math.toRadians(camera.getPitch());
         
@@ -319,30 +319,30 @@ public class Player {
         direction.z = (float) (Math.cos(pitch) * -Math.cos(yaw));
         direction.normalize();
         
-        // Ray step size and current distance
+        // Tamaño del paso del rayo y distancia actual
         float distance = 0;
         
-        // Previous position (for face normal calculation)
+        // Posición anterior (para cálculo de cara normal)
         int lastX = (int) Math.floor(origin.x);
         int lastY = (int) Math.floor(origin.y);
         int lastZ = (int) Math.floor(origin.z);
         
-        // Ray marching
+        // Marcha del rayo
         while (distance < REACH_DISTANCE) {
-            // Calculate current position
+            // Calcular posición actual
             float x = origin.x + direction.x * distance;
             float y = origin.y + direction.y * distance;
             float z = origin.z + direction.z * distance;
             
-            // Convert to block coordinates
+            // Convertir a coordenadas de bloque
             int blockX = (int) Math.floor(x);
             int blockY = (int) Math.floor(y);
             int blockZ = (int) Math.floor(z);
             
-            // Check if block is solid
+            // Comprobar si el bloque es sólido
             Block block = world.getBlockAt(blockX, blockY, blockZ);
             if (block != null && block.isSolid()) {
-                // Calculate which face was hit (for placing blocks)
+                // Calcular qué cara fue golpeada (para colocación de bloques)
                 int faceX = 0, faceY = 0, faceZ = 0;
                 
                 if (includeOutsideInfo) {
@@ -354,7 +354,7 @@ public class Player {
                     else if (blockZ < lastZ) faceZ = 1;
                 }
                 
-                // Return information about the block hit
+                // Devolver información sobre el bloque golpeado
                 BlockRayResult result = new BlockRayResult();
                 result.x = blockX;
                 result.y = blockY;
@@ -366,12 +366,12 @@ public class Player {
                 return result;
             }
             
-            // Remember current position for face calculation
+            // Recordar posición actual para cálculo de cara
             lastX = blockX;
             lastY = blockY;
             lastZ = blockZ;
             
-            // Step along the ray
+            // Avanzar a lo largo del rayo
             distance += RAY_STEP;
         }
         
@@ -379,18 +379,18 @@ public class Player {
     }
     
     /**
-     * Changes the selected hotbar slot
+     * Cambia la ranura de hotbar seleccionada
      * 
-     * @param delta Change amount (positive or negative)
+     * @param delta Cantidad de cambio (positivo o negativo)
      */
     public void changeHotbarSelection(int delta) {
         selectedHotbarSlot = (selectedHotbarSlot + delta + hotbar.length) % hotbar.length;
     }
     
     /**
-     * Sets the selected hotbar slot directly
+     * Establece la ranura de hotbar seleccionada directamente
      * 
-     * @param slot The slot to select (0-8)
+     * @param slot La ranura a seleccionar (0-8)
      */
     public void setHotbarSelection(int slot) {
         if (slot >= 0 && slot < hotbar.length) {
@@ -399,68 +399,68 @@ public class Player {
     }
     
     /**
-     * Gets the currently selected block
+     * Obtiene el bloque seleccionado actualmente
      * 
-     * @return The block ID in the selected hotbar slot
+     * @return El ID del bloque en la ranura de hotbar seleccionada
      */
     public int getSelectedBlockId() {
         return hotbar[selectedHotbarSlot];
     }
     
     /**
-     * Toggles the flying mode
+     * Alterna el modo vuelo
      */
     public void toggleFlying() {
         isFlying = !isFlying;
         
-        // Reset vertical velocity when toggling
+        // Restablecer velocidad vertical al alternar
         velocity.y = 0;
     }
     
     /**
-     * Gets the player's camera
+     * Obtiene la cámara del jugador
      */
     public Camera getCamera() {
         return camera;
     }
     
     /**
-     * Gets the player's position
+     * Obtiene la posición del jugador
      */
     public Vector3f getPosition() {
         return position;
     }
     
     /**
-     * Gets whether the player is on the ground
+     * Obtiene si el jugador está en el suelo
      */
     public boolean isOnGround() {
         return onGround;
     }
     
     /**
-     * Gets whether the player is in flying mode
+     * Obtiene si el jugador está en modo vuelo
      */
     public boolean isFlying() {
         return isFlying;
     }
     
     /**
-     * Gets the currently selected hotbar slot
+     * Obtiene la ranura de hotbar actualmente seleccionada
      */
     public int getSelectedHotbarSlot() {
         return selectedHotbarSlot;
     }
     
     /**
-     * Gets the contents of the hotbar
+     * Obtiene el contenido del hotbar
      */
     public int[] getHotbar() {
         return hotbar;
     }
     
     /**
-     * Helper class to store ray cast results
+     * Clase auxiliar para almacenar resultados del lanzamiento de rayos
      */
     private static class BlockRayResult {
         public int x, y, z;

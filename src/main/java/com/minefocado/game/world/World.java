@@ -25,53 +25,53 @@ import main.java.com.minefocado.game.world.chunk.ChunkMeshData;
 import main.java.com.minefocado.game.world.generation.TerrainGenerator;
 
 /**
- * Represents the game world, managing chunks, terrain generation,
- * and providing access to blocks at any position.
+ * Representa el mundo del juego, administrando chunks, generación de terreno,
+ * y proporcionando acceso a bloques en cualquier posición.
  */
 public class World {
-    // Default world seed
+    // Semilla del mundo por defecto
     private static final long DEFAULT_SEED = 12345L;
     
-    // Chunk render distance (chunks from player in each direction)
+    // Distancia de renderizado de chunks (chunks desde el jugador en cada dirección)
     private static final int RENDER_DISTANCE = 8;
     
-    // The radius at which we load chunks
+    // El radio en el que cargamos chunks
     private static final int LOAD_DISTANCE = RENDER_DISTANCE + 2;
     
-    // Map of loaded chunks
+    // Mapa de chunks cargados
     private final Map<ChunkPos, Chunk> chunks;
     
-    // Terrain generator for this world
+    // Generador de terreno para este mundo
     private final TerrainGenerator terrainGenerator;
     
-    // Chunk mesh builder
+    // Constructor de mallas de chunks
     private final ChunkMeshBuilder meshBuilder;
     
-    // Thread pool for async chunk operations
+    // Pool de hilos para operaciones asíncronas de chunks
     private final ExecutorService chunkExecutor;
     
-    // Flag to prevent task submission when the executor is shutting down
+    // Bandera para evitar envío de tareas cuando el ejecutor está cerrándose
     private boolean isShuttingDown = false;
     
-    // Maximum number of chunk load operations to schedule at once
+    // Número máximo de operaciones de carga de chunks a programar a la vez
     private static final int MAX_CHUNK_LOAD_QUEUE = 100;
     
-    // Keep track of active task count
+    // Seguimiento del recuento de tareas activas
     private int pendingChunkTasks = 0;
     
-    // World seed
+    // Semilla del mundo
     private final long seed;
     
-    // Block registry reference
+    // Referencia al registro de bloques
     private final BlockRegistry blockRegistry;
     
-    // Shader program for rendering chunks
+    // Programa de shader para renderizar chunks
     private ShaderProgram shaderProgram;
     
-    // Texture atlas for blocks
+    // Atlas de texturas para bloques
     private Texture textureAtlas;
     
-    // Current player chunk for loading/unloading calculations
+    // Chunk actual del jugador para cálculos de carga/descarga
     private int playerChunkX;
     private int playerChunkZ;
     
@@ -79,16 +79,16 @@ public class World {
     private final List<Chunk> meshCreationQueue = new ArrayList<>();
     
     /**
-     * Creates a new world with the default seed
+     * Crea un nuevo mundo con la semilla predeterminada
      */
     public World() {
         this(DEFAULT_SEED);
     }
     
     /**
-     * Creates a new world with the specified seed
+     * Crea un nuevo mundo con la semilla especificada
      * 
-     * @param seed The world seed
+     * @param seed La semilla del mundo
      */
     public World(long seed) {
         this.seed = seed;
@@ -97,30 +97,30 @@ public class World {
         this.meshBuilder = new ChunkMeshBuilder();
         this.blockRegistry = BlockRegistry.getInstance();
         
-        // Create a thread pool for chunk operations
+        // Crear un pool de hilos para operaciones de chunk
         this.chunkExecutor = Executors.newFixedThreadPool(
                 Math.max(1, Runtime.getRuntime().availableProcessors() - 1)
         );
         
-        // Initialize player position
+        // Inicializar posición del jugador
         this.playerChunkX = 0;
         this.playerChunkZ = 0;
         
-        // Initialize rendering components
+        // Inicializar componentes de renderizado
         initRendering();
     }
     
     /**
-     * Initializes shader and texture resources
+     * Inicializa recursos de shader y textura
      */
     protected void initRendering() {
         try {
-            // Load shader program
+            // Cargar programa de shader
             String vertexShaderCode = ShaderLoader.getDefaultVertexShader();
             String fragmentShaderCode = ShaderLoader.getDefaultFragmentShader();
             shaderProgram = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
             
-            // Create uniforms - Implementando manejo de errores para cada uniform
+            // Crear uniformes - Implementando manejo de errores para cada uniform
             try {
                 shaderProgram.createUniform("projectionMatrix");
                 shaderProgram.createUniform("viewMatrix");
@@ -130,72 +130,72 @@ public class World {
                 shaderProgram.createUniform("viewPosition");
                 shaderProgram.createUniform("ambientStrength");
             } catch (Exception e) {
-                System.err.println("Warning: Failed to create some shader uniforms: " + e.getMessage());
-                System.err.println("This may cause rendering issues but will not prevent the game from running.");
+                System.err.println("Advertencia: Error al crear algunos uniformes del shader: " + e.getMessage());
+                System.err.println("Esto puede causar problemas de renderizado pero no impedirá que el juego se ejecute.");
                 // Continuamos a pesar del error para que el juego pueda ejecutarse
             }
             
-            // Load texture atlas (creates a default one if not found)
+            // Cargar atlas de textura (crea uno predeterminado si no se encuentra)
             textureAtlas = Texture.loadTexture("textures/blocks.png");
             
-            System.out.println("World rendering initialized successfully");
+            System.out.println("Renderizado del mundo inicializado correctamente");
         } catch (Exception e) {
-            System.err.println("Failed to initialize world rendering: " + e.getMessage());
+            System.err.println("Error al inicializar el renderizado del mundo: " + e.getMessage());
             e.printStackTrace();
         }
     }
     
     /**
-     * Gets the block at a world position
+     * Obtiene el bloque en una posición del mundo
      * 
-     * @param worldX X coordinate in world space
-     * @param worldY Y coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @return The block at that position, or AIR if outside loaded chunks
+     * @param worldX Coordenada X en espacio del mundo
+     * @param worldY Coordenada Y en espacio del mundo
+     * @param worldZ Coordenada Z en espacio del mundo
+     * @return El bloque en esa posición, o AIRE si está fuera de chunks cargados
      */
     public Block getBlockAt(int worldX, int worldY, int worldZ) {
-        // Convert to chunk coordinates
+        // Convertir a coordenadas de chunk
         int chunkX = Math.floorDiv(worldX, Chunk.WIDTH);
         int chunkZ = Math.floorDiv(worldZ, Chunk.DEPTH);
         
-        // Calculate local coordinates within the chunk
+        // Calcular coordenadas locales dentro del chunk
         int localX = Math.floorMod(worldX, Chunk.WIDTH);
         int localZ = Math.floorMod(worldZ, Chunk.DEPTH);
         
-        // Get the chunk
+        // Obtener el chunk
         Chunk chunk = getChunk(chunkX, chunkZ);
         if (chunk != null) {
             return chunk.getBlock(localX, worldY, localZ);
         }
         
-        // Return air for unloaded chunks
+        // Devolver aire para chunks no cargados
         return blockRegistry.getBlock(BlockRegistry.AIR_ID);
     }
     
     /**
-     * Sets a block at a world position
+     * Coloca un bloque en una posición del mundo
      * 
-     * @param worldX X coordinate in world space
-     * @param worldY Y coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @param blockId The block ID to place
-     * @return True if the block was placed successfully
+     * @param worldX Coordenada X en espacio del mundo
+     * @param worldY Coordenada Y en espacio del mundo
+     * @param worldZ Coordenada Z en espacio del mundo
+     * @param blockId El ID del bloque a colocar
+     * @return Verdadero si el bloque se colocó correctamente
      */
     public boolean setBlockAt(int worldX, int worldY, int worldZ, int blockId) {
-        // Convert to chunk coordinates
+        // Convertir a coordenadas de chunk
         int chunkX = Math.floorDiv(worldX, Chunk.WIDTH);
         int chunkZ = Math.floorDiv(worldZ, Chunk.DEPTH);
         
-        // Calculate local coordinates within the chunk
+        // Calcular coordenadas locales dentro del chunk
         int localX = Math.floorMod(worldX, Chunk.WIDTH);
         int localZ = Math.floorMod(worldZ, Chunk.DEPTH);
         
-        // Get the chunk
+        // Obtener el chunk
         Chunk chunk = getChunk(chunkX, chunkZ);
         if (chunk != null) {
             chunk.setBlockId(localX, worldY, localZ, blockId);
             
-            // Update adjacent chunks if this block is on a chunk boundary
+            // Actualizar chunks adyacentes si este bloque está en un límite de chunk
             if (localX == 0 || localX == Chunk.WIDTH - 1 || 
                 localZ == 0 || localZ == Chunk.DEPTH - 1) {
                 updateAdjacentChunks(chunkX, chunkZ);
@@ -208,14 +208,14 @@ public class World {
     }
     
     /**
-     * Updates adjacent chunks to ensure mesh edges are consistent
+     * Actualiza chunks adyacentes para asegurar consistencia en los bordes de malla
      */
     private void updateAdjacentChunks(int chunkX, int chunkZ) {
-        // Mark adjacent chunks as dirty if they exist
-        // This ensures consistent rendering at chunk boundaries
+        // Marcar chunks adyacentes como sucios si existen
+        // Esto asegura renderizado consistente en los límites de chunk
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                if (dx == 0 && dz == 0) continue; // Skip the center chunk
+                if (dx == 0 && dz == 0) continue; // Omitir el chunk central
                 
                 Chunk adjacentChunk = getChunk(chunkX + dx, chunkZ + dz);
                 if (adjacentChunk != null) {
@@ -226,34 +226,34 @@ public class World {
     }
     
     /**
-     * Gets a chunk at the specified chunk coordinates
+     * Obtiene un chunk en las coordenadas de chunk especificadas
      * 
-     * @param chunkX Chunk X coordinate
-     * @param chunkZ Chunk Z coordinate
-     * @return The chunk, or null if not loaded
+     * @param chunkX Coordenada X del chunk
+     * @param chunkZ Coordenada Z del chunk
+     * @return El chunk, o null si no está cargado
      */
     public Chunk getChunk(int chunkX, int chunkZ) {
         return chunks.get(new ChunkPos(chunkX, chunkZ));
     }
     
     /**
-     * Updates the world based on the player's position,
-     * loading/unloading chunks as needed
+     * Actualiza el mundo basado en la posición del jugador,
+     * cargando/descargando chunks según sea necesario
      * 
-     * @param worldX Player's X position in world space
-     * @param worldZ Player's Z position in world space
+     * @param worldX Posición X del jugador en espacio del mundo
+     * @param worldZ Posición Z del jugador en espacio del mundo
      */
     public void update(float worldX, float worldZ) {
-        // Calculate player's current chunk
+        // Calcular chunk actual del jugador
         int newChunkX = Math.floorDiv((int)worldX, Chunk.WIDTH);
         int newChunkZ = Math.floorDiv((int)worldZ, Chunk.DEPTH);
         
-        // Only load/unload chunks if the player has moved to a different chunk
+        // Solo cargar/descargar chunks si el jugador se ha movido a un chunk diferente
         if (newChunkX != playerChunkX || newChunkZ != playerChunkZ) {
             playerChunkX = newChunkX;
             playerChunkZ = newChunkZ;
             
-            // Load new chunks in a separate thread
+            // Cargar nuevos chunks en un hilo separado
             chunkExecutor.execute(this::loadAndUnloadChunks);
         }
         
@@ -301,10 +301,10 @@ public class World {
     }
     
     /**
-     * Updates meshes for chunks that have been modified
+     * Actualiza mallas para chunks que han sido modificados
      */
     public void updateChunkMeshes() {
-        // Check dirty chunks and schedule their mesh rebuilding if needed
+        // Verificar chunks sucios y programar su reconstrucción de malla si es necesario
         for (Chunk chunk : chunks.values()) {
             if (chunk.isMeshDirty()) {
                 // Solo generamos los datos en el hilo principal
@@ -330,25 +330,25 @@ public class World {
     }
     
     /**
-     * Loads and unloads chunks based on player position
+     * Carga y descarga chunks basados en la posición del jugador
      */
     private void loadAndUnloadChunks() {
         Set<ChunkPos> toKeep = new HashSet<>();
         
-        // Calculate which chunks should be loaded
+        // Calcular qué chunks deben estar cargados
         for (int x = playerChunkX - LOAD_DISTANCE; x <= playerChunkX + LOAD_DISTANCE; x++) {
             for (int z = playerChunkZ - LOAD_DISTANCE; z <= playerChunkZ + LOAD_DISTANCE; z++) {
                 ChunkPos pos = new ChunkPos(x, z);
                 toKeep.add(pos);
                 
-                // If this chunk isn't loaded yet, load it
+                // Si este chunk aún no está cargado, cargarlo
                 if (!chunks.containsKey(pos)) {
                     loadChunk(x, z);
                 }
             }
         }
         
-        // Find chunks to unload (outside render distance)
+        // Encontrar chunks para descargar (fuera de la distancia de renderizado)
         List<ChunkPos> toRemove = new ArrayList<>();
         for (ChunkPos pos : chunks.keySet()) {
             if (!toKeep.contains(pos)) {
@@ -356,22 +356,22 @@ public class World {
             }
         }
         
-        // Unload the chunks
+        // Descargar los chunks
         for (ChunkPos pos : toRemove) {
             unloadChunk(pos);
         }
         
-        // Generate terrain features in a second pass once all nearby chunks are available
+        // Generar características de terreno en un segundo pase una vez que todos los chunks cercanos estén disponibles
         for (int x = playerChunkX - LOAD_DISTANCE + 2; x <= playerChunkX + LOAD_DISTANCE - 2; x++) {
             for (int z = playerChunkZ - LOAD_DISTANCE + 2; z <= playerChunkZ + LOAD_DISTANCE - 2; z++) {
                 Chunk chunk = getChunk(x, z);
                 
-                // Only populate if the chunk is generated but not populated
+                // Solo poblar si el chunk está generado pero no poblado
                 if (chunk != null && chunk.isGenerated() && !chunk.isPopulated()) {
-                    // Populate the chunk with features like trees
+                    // Poblar el chunk con características como árboles
                     terrainGenerator.populateChunk(chunk);
                     
-                    // Mark the chunk dirty to rebuild its mesh
+                    // Marcar el chunk como sucio para reconstruir su malla
                     chunk.setMeshDirty(true);
                 }
             }
@@ -379,28 +379,28 @@ public class World {
     }
     
     /**
-     * Loads a chunk at the specified coordinates
+     * Carga un chunk en las coordenadas especificadas
      * 
-     * @param chunkX Chunk X coordinate
-     * @param chunkZ Chunk Z coordinate
+     * @param chunkX Coordenada X del chunk
+     * @param chunkZ Coordenada Z del chunk
      */
     private void loadChunk(int chunkX, int chunkZ) {
-        // Skip if we're shutting down or have too many pending tasks
+        // Omitir si estamos cerrando o tenemos demasiadas tareas pendientes
         if (isShuttingDown || pendingChunkTasks >= MAX_CHUNK_LOAD_QUEUE) {
             return;
         }
         
-        // Create a new chunk
+        // Crear un nuevo chunk
         Chunk chunk = new Chunk(this, chunkX, chunkZ);
         
-        // Generate terrain for the chunk
+        // Generar terreno para el chunk
         terrainGenerator.generateTerrain(chunk);
         
-        // Add to loaded chunks (sin construir el mesh todavía)
+        // Añadir a chunks cargados (sin construir el mesh todavía)
         chunks.put(new ChunkPos(chunkX, chunkZ), chunk);
         
         try {
-            // Track number of pending tasks
+            // Seguimiento del número de tareas pendientes
             synchronized(this) {
                 pendingChunkTasks++;
             }
@@ -419,53 +419,53 @@ public class World {
                         }
                     }
                 } finally {
-                    // Always decrement task count when done
+                    // Siempre decrementar el conteo de tareas al terminar
                     synchronized(World.this) {
                         pendingChunkTasks--;
                     }
                 }
             });
         } catch (Exception e) {
-            // Handle thread pool rejection or other errors
+            // Manejar rechazo de pool de hilos u otros errores
             synchronized(this) {
-                pendingChunkTasks--; // Decrement since we failed to queue
+                pendingChunkTasks--; // Decrementar ya que fallamos en encolar
             }
-            System.err.println("Failed to schedule chunk mesh generation for chunk " + 
+            System.err.println("Error al programar generación de malla de chunk para el chunk " + 
                               chunkX + "," + chunkZ + ": " + e.getMessage());
         }
     }
     
     /**
-     * Unloads a chunk and frees its resources
+     * Descarga un chunk y libera sus recursos
      * 
-     * @param pos Chunk position to unload
+     * @param pos Posición del chunk a descargar
      */
     private void unloadChunk(ChunkPos pos) {
         Chunk chunk = chunks.remove(pos);
         
-        // Cleanup chunk mesh resources
+        // Limpiar recursos de malla del chunk
         if (chunk != null && chunk.getMesh() != null) {
             chunk.getMesh().cleanup();
         }
     }
     
     /**
-     * Renders visible chunks
+     * Renderiza chunks visibles
      * 
-     * @param projectionMatrix Projection matrix from the camera
-     * @param viewMatrix View matrix from the camera
-     * @param playerPos Player position for lighting
+     * @param projectionMatrix Matriz de proyección de la cámara
+     * @param viewMatrix Matriz de vista de la cámara
+     * @param playerPos Posición del jugador para iluminación
      */
     public void render(Matrix4f projectionMatrix, Matrix4f viewMatrix, Vector3f playerPos) {
         if (shaderProgram == null || textureAtlas == null) {
             return;
         }
         
-        // Bind shader and texture
+        // Vincular shader y textura
         shaderProgram.bind();
         textureAtlas.bind();
         
-        // Set shared uniforms with try-catch para cada uno
+        // Establecer uniformes compartidos con try-catch para cada uno
         try {
             shaderProgram.setUniform("projectionMatrix", projectionMatrix);
         } catch (Exception e) {
@@ -479,14 +479,14 @@ public class World {
         }
         
         try {
-            shaderProgram.setUniform("textureSampler", 0); // Texture unit 0
+            shaderProgram.setUniform("textureSampler", 0); // Unidad de textura 0
         } catch (Exception e) {
             // Ignorar si el uniform no existe
         }
         
-        // Set lighting uniforms
+        // Establecer uniformes de iluminación
         try {
-            shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Sun position
+            shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Posición del sol
         } catch (Exception e) {
             // Ignorar si el uniform no existe
         }
@@ -503,59 +503,59 @@ public class World {
             // Ignorar si el uniform no existe
         }
         
-        // Render all chunks that are in render distance
+        // Renderizar todos los chunks que están en distancia de renderizado
         for (Chunk chunk : chunks.values()) {
             int dx = chunk.getChunkX() - playerChunkX;
             int dz = chunk.getChunkZ() - playerChunkZ;
             
-            // Only render chunks within render distance
+            // Solo renderizar chunks dentro de la distancia de renderizado
             if (Math.abs(dx) <= RENDER_DISTANCE && Math.abs(dz) <= RENDER_DISTANCE) {
                 ChunkMesh mesh = chunk.getMesh();
                 if (mesh != null) {
                     try {
                         mesh.render(shaderProgram);
                     } catch (Exception e) {
-                        System.err.println("Error rendering chunk at " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": " + e.getMessage());
+                        System.err.println("Error al renderizar chunk en " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": " + e.getMessage());
                     }
                 }
             }
         }
         
-        // Unbind
+        // Desvincular
         textureAtlas.unbind();
         shaderProgram.unbind();
     }
     
     /**
-     * Cleanup world resources
+     * Limpia recursos del mundo
      */
     public void cleanup() {
-        // Mark as shutting down to prevent new tasks
+        // Marcar como cerrando para evitar nuevas tareas
         isShuttingDown = true;
         
-        // Shutdown chunk executor
+        // Apagar el ejecutor de chunk
         chunkExecutor.shutdown();
         
-        // Cleanup all chunk meshes
+        // Limpiar todas las mallas de chunk
         for (Chunk chunk : chunks.values()) {
             if (chunk.getMesh() != null) {
                 chunk.getMesh().cleanup();
             }
         }
         
-        // Clear chunks
+        // Limpiar chunks
         chunks.clear();
     }
     
     /**
-     * Gets the world seed
+     * Obtiene la semilla del mundo
      */
     public long getSeed() {
         return seed;
     }
     
     /**
-     * Gets the number of loaded chunks
+     * Obtiene el número de chunks cargados
      */
     public int getLoadedChunkCount() {
         return chunks.size();
@@ -618,7 +618,7 @@ public class World {
     }
     
     /**
-     * Represents a chunk position in the world
+     * Representa una posición de chunk en el mundo
      */
     private static class ChunkPos {
         private final int x;

@@ -5,45 +5,45 @@ import main.java.com.minefocado.game.world.blocks.Block;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 
 /**
- * Represents a chunk of blocks in the voxel world.
- * A chunk is a fixed-size 3D grid of blocks.
+ * Representa un chunk de bloques en el mundo de vóxeles.
+ * Un chunk es una cuadrícula 3D de tamaño fijo de bloques.
  */
 public class Chunk {
-    // Chunk dimensions
+    // Dimensiones del chunk
     public static final int WIDTH = 16;
     public static final int HEIGHT = 256;
     public static final int DEPTH = 16;
     public static final int VOLUME = WIDTH * HEIGHT * DEPTH;
     
-    // Position in chunk coordinates (not block coordinates)
+    // Posición en coordenadas de chunk (no coordenadas de bloque)
     private final int chunkX;
     private final int chunkZ;
     
-    // Block data
+    // Datos de bloques
     private final byte[] blockIds;
     
-    // Reference to the parent world and block registry
+    // Referencia al mundo padre y registro de bloques
     private final World world;
     private final BlockRegistry blockRegistry;
     
-    // Chunk state tracking
+    // Seguimiento del estado del chunk
     private boolean modified;
     private boolean generated;
     private boolean populated;
     private boolean meshDirty;
     
-    // Chunk mesh for rendering
+    // Malla del chunk para renderización
     private ChunkMesh mesh;
     
-    // Datos del mesh sin operaciones OpenGL (para construcción segura en hilos secundarios)
+    // Datos de malla sin operaciones OpenGL (para construcción segura en hilos secundarios)
     private ChunkMeshData meshData;
     
     /**
-     * Creates a new chunk at the specified coordinates
+     * Crea un nuevo chunk en las coordenadas especificadas
      * 
-     * @param world The parent world
-     * @param chunkX X coordinate in chunk space
-     * @param chunkZ Z coordinate in chunk space
+     * @param world El mundo padre
+     * @param chunkX Coordenada X en espacio de chunk
+     * @param chunkZ Coordenada Z en espacio de chunk
      */
     public Chunk(World world, int chunkX, int chunkZ) {
         this.world = world;
@@ -58,26 +58,26 @@ public class Chunk {
     }
     
     /**
-     * Gets the X coordinate of this chunk in chunk space
+     * Obtiene la coordenada X de este chunk en espacio de chunk
      */
     public int getChunkX() {
         return chunkX;
     }
     
     /**
-     * Gets the Z coordinate of this chunk in chunk space
+     * Obtiene la coordenada Z de este chunk en espacio de chunk
      */
     public int getChunkZ() {
         return chunkZ;
     }
     
     /**
-     * Gets the block ID at the specified local coordinates
+     * Obtiene el ID del bloque en las coordenadas especificadas
      * 
-     * @param x Local X coordinate (0-15)
-     * @param y Y coordinate (0-255)
-     * @param z Local Z coordinate (0-15)
-     * @return Block ID
+     * @param x Coordenada X local (0-15)
+     * @param y Coordenada Y (0-255)
+     * @param z Coordenada Z local (0-15)
+     * @return ID del bloque en esa posición, o 0 (aire) si está fuera de límites
      */
     public byte getBlockId(int x, int y, int z) {
         if (!isValidCoordinate(x, y, z)) {
@@ -89,12 +89,13 @@ public class Chunk {
     }
     
     /**
-     * Sets the block ID at the specified local coordinates
+     * Establece un bloque en las coordenadas especificadas
      * 
-     * @param x Local X coordinate (0-15)
-     * @param y Y coordinate (0-255)
-     * @param z Local Z coordinate (0-15)
-     * @param blockId The block ID to set
+     * @param x Coordenada X local (0-15)
+     * @param y Coordenada Y (0-255)
+     * @param z Coordenada Z local (0-15)
+     * @param blockId ID del bloque a colocar
+     * @return Verdadero si el bloque se colocó correctamente
      */
     public void setBlockId(int x, int y, int z, byte blockId) {
         if (!isValidCoordinate(x, y, z)) {
@@ -109,7 +110,7 @@ public class Chunk {
             modified = true;
             meshDirty = true;
             
-            // Update neighboring chunks if the block is on the edge
+            // Actualizar chunks vecinos si este bloque está en un borde
             if (x == 0 || x == WIDTH - 1 || z == 0 || z == DEPTH - 1) {
                 updateNeighborChunks(x, y, z);
             }
@@ -117,19 +118,19 @@ public class Chunk {
     }
     
     /**
-     * Sets the block ID at the specified local coordinates (int version)
+     * Establece el ID del bloque en las coordenadas especificadas (versión int)
      */
     public void setBlockId(int x, int y, int z, int blockId) {
         setBlockId(x, y, z, (byte) blockId);
     }
     
     /**
-     * Gets the Block object at the specified local coordinates
+     * Obtiene un objeto de bloque en las coordenadas especificadas
      * 
-     * @param x Local X coordinate (0-15)
-     * @param y Y coordinate (0-255)
-     * @param z Local Z coordinate (0-15)
-     * @return Block object
+     * @param x Coordenada X local (0-15)
+     * @param y Coordenada Y (0-255)
+     * @param z Coordenada Z local (0-15)
+     * @return Objeto de bloque en esa posición, o AIRE si está fuera de límites
      */
     public Block getBlock(int x, int y, int z) {
         byte id = getBlockId(x, y, z);
@@ -137,9 +138,9 @@ public class Chunk {
     }
     
     /**
-     * Sets all blocks in the chunk to the specified block ID
+     * Rellena todos los bloques en el chunk con el ID de bloque especificado
      * 
-     * @param blockId The block ID to fill with
+     * @param blockId El ID de bloque con el que rellenar
      */
     public void fill(byte blockId) {
         for (int i = 0; i < VOLUME; i++) {
@@ -150,24 +151,24 @@ public class Chunk {
     }
     
     /**
-     * Converts local chunk coordinates to an index in the block array
+     * Convierte coordenadas locales de chunk a un índice en el array de bloques
      */
     private int getIndex(int x, int y, int z) {
         return y * WIDTH * DEPTH + z * WIDTH + x;
     }
     
     /**
-     * Checks if the coordinates are valid for this chunk
+     * Comprueba si las coordenadas son válidas para este chunk
      */
     private boolean isValidCoordinate(int x, int y, int z) {
         return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT && z >= 0 && z < DEPTH;
     }
     
     /**
-     * Updates neighboring chunks when a block on the edge changes
+     * Actualiza chunks vecinos cuando un bloque en el borde cambia
      */
     private void updateNeighborChunks(int x, int y, int z) {
-        // Notify neighboring chunks that their mesh needs updating
+        // Notificar a los chunks vecinos que su malla necesita actualización
         if (x == 0) {
             Chunk neighbor = world.getChunk(chunkX - 1, chunkZ);
             if (neighbor != null) {
@@ -194,19 +195,19 @@ public class Chunk {
     }
     
     /**
-     * Gets a block in world space, handling chunk borders
+     * Obtiene un bloque en espacio del mundo, manejando bordes de chunk
      * 
-     * @param worldX X coordinate in world space
-     * @param worldY Y coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @return Block at the specified position, or air if out of bounds
+     * @param worldX Coordenada X en espacio del mundo
+     * @param worldY Coordenada Y en espacio del mundo
+     * @param worldZ Coordenada Z en espacio del mundo
+     * @return Bloque en la posición especificada, o aire si está fuera de límites
      */
     public Block getBlockInWorld(int worldX, int worldY, int worldZ) {
-        // Convert world space to chunk space
+        // Convertir espacio del mundo a espacio de chunk
         int localX = worldX - (chunkX * WIDTH);
         int localZ = worldZ - (chunkZ * DEPTH);
         
-        // If local coordinates are outside this chunk, get from the appropriate chunk
+        // Si las coordenadas locales están fuera de este chunk, obtener del chunk apropiado
         if (localX < 0 || localX >= WIDTH || localZ < 0 || localZ >= DEPTH || worldY < 0 || worldY >= HEIGHT) {
             return world.getBlockAt(worldX, worldY, worldZ);
         }
@@ -215,15 +216,15 @@ public class Chunk {
     }
     
     /**
-     * Gets the mesh for this chunk, building it if necessary
+     * Obtiene la malla para este chunk, construyéndola si es necesario
      */
     public ChunkMesh getMesh() {
         return mesh;
     }
     
     /**
-     * Sets the mesh for this chunk
-     * @param mesh El mesh a establecer
+     * Establece la malla para este chunk
+     * @param mesh La malla a establecer
      */
     public void setMesh(ChunkMesh mesh) {
         // Limpia el mesh anterior si existe
@@ -234,99 +235,99 @@ public class Chunk {
     }
     
     /**
-     * Gets the mesh data for this chunk
+     * Obtiene los datos de malla para este chunk
      */
     public ChunkMeshData getMeshData() {
         return meshData;
     }
     
     /**
-     * Sets the mesh data for this chunk
-     * @param meshData Los datos de mesh a establecer
+     * Establece los datos de malla para este chunk
+     * @param meshData Los datos de malla a establecer
      */
     public void setMeshData(ChunkMeshData meshData) {
         this.meshData = meshData;
     }
     
     /**
-     * Verifica si hay datos de mesh disponibles para crear un mesh OpenGL
+     * Verifica si hay datos de malla disponibles para crear un mesh OpenGL
      */
     public boolean hasMeshData() {
         return meshData != null;
     }
     
     /**
-     * Checks if this chunk has been modified since last save
+     * Comprueba si este chunk está modificado (tiene cambios no guardados)
      */
     public boolean isModified() {
         return modified;
     }
     
     /**
-     * Sets the modified state of this chunk
+     * Establece el estado modificado de este chunk
      */
     public void setModified(boolean modified) {
         this.modified = modified;
     }
     
     /**
-     * Checks if this chunk has had terrain generated
+     * Comprueba si este chunk tiene terreno generado
      */
     public boolean isGenerated() {
         return generated;
     }
     
     /**
-     * Sets whether this chunk has had terrain generated
+     * Establece si este chunk tiene terreno generado
      */
     public void setGenerated(boolean generated) {
         this.generated = generated;
     }
     
     /**
-     * Checks if this chunk has had features populated
+     * Comprueba si este chunk tiene características pobladas
      */
     public boolean isPopulated() {
         return populated;
     }
     
     /**
-     * Sets whether this chunk has had features populated
+     * Establece si este chunk tiene características pobladas
      */
     public void setPopulated(boolean populated) {
         this.populated = populated;
     }
     
     /**
-     * Gets the dirty state of the chunk mesh
+     * Obtiene el estado sucio de la malla del chunk
      */
     public boolean isMeshDirty() {
         return meshDirty;
     }
     
     /**
-     * Sets the dirty state of the chunk mesh
+     * Establece el estado sucio de la malla del chunk
      */
     public void setMeshDirty(boolean meshDirty) {
         this.meshDirty = meshDirty;
     }
     
     /**
-     * Gets the World object that contains this chunk
+     * Obtiene el objeto World que contiene este chunk
      */
     public World getWorld() {
         return world;
     }
     
     /**
-     * Disposes of the chunk's resources
+     * Libera los recursos del chunk
      */
     public void dispose() {
         if (mesh != null) {
             mesh.cleanup();
             mesh = null;
         }
-        // Liberamos también los datos del mesh
+        // Liberar también los datos de la malla
         meshData = null;
     }
 }

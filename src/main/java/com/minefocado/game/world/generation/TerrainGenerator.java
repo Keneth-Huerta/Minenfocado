@@ -7,107 +7,107 @@ import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 import main.java.com.minefocado.game.world.chunk.Chunk;
 
 /**
- * Handles terrain generation for the voxel world.
- * Uses Perlin noise to generate realistic terrain.
+ * Maneja la generación de terreno para el mundo de vóxeles.
+ * Utiliza ruido de Perlin para generar terreno realista.
  */
 public class TerrainGenerator {
-    // Terrain generation constants
+    // Constantes de generación de terreno
     private static final int SEA_LEVEL = 62;
     private static final int DIRT_DEPTH = 5;
     private static final int BEACH_HEIGHT = 4;
     private static final int STONE_HEIGHT = 48;
     
-    // Cave generation constants
+    // Constantes de generación de cuevas
     private static final double CAVE_THRESHOLD = 0.3;
     private static final int CAVE_OCTAVES = 3;
     private static final double CAVE_SCALE = 40.0;
     
-    // Tree generation constants
+    // Constantes de generación de árboles
     private static final int TREE_HEIGHT_MIN = 4;
     private static final int TREE_HEIGHT_MAX = 7;
-    private static final double TREE_PROBABILITY = 0.005; // 0.5% chance per suitable block
+    private static final double TREE_PROBABILITY = 0.005; // 0.5% de probabilidad por bloque adecuado
     
-    // Biome constants
+    // Constantes de bioma
     private static final double BIOME_SCALE = 200.0;
     private static final int BIOME_OCTAVES = 2;
     
-    // Biome types
+    // Tipos de bioma
     private static final int BIOME_PLAINS = 0;
     private static final int BIOME_FOREST = 1;
     private static final int BIOME_DESERT = 2;
     private static final int BIOME_MOUNTAINS = 3;
     
-    // Height settings per biome (max height, terrain scale, octaves)
+    // Configuración de altura por bioma (altura máxima, escala de terreno, octavas)
     private static final double[][] BIOME_SETTINGS = {
-        { 24.0, 100.0, 3 }, // Plains
-        { 32.0, 100.0, 3 }, // Forest
-        { 16.0, 120.0, 2 }, // Desert
-        { 64.0, 80.0, 4 }   // Mountains
+        { 24.0, 100.0, 3 }, // Llanuras
+        { 32.0, 100.0, 3 }, // Bosque
+        { 16.0, 120.0, 2 }, // Desierto
+        { 64.0, 80.0, 4 }   // Montañas
     };
     
-    // Noise generators
+    // Generadores de ruido
     private final PerlinNoise heightNoise;
     private final PerlinNoise caveNoise;
     private final PerlinNoise biomeNoise;
     
-    // Random for non-noise elements (trees, etc.)
+    // Random para elementos no basados en ruido (árboles, etc.)
     private final Random random;
     private final long seed;
     
-    // Block registry reference
+    // Referencia al registro de bloques
     private final BlockRegistry blockRegistry;
     
     /**
-     * Creates a new terrain generator with the specified seed
+     * Crea un nuevo generador de terreno con la semilla especificada
      * 
-     * @param seed Random seed for terrain generation
+     * @param seed Semilla aleatoria para generación de terreno
      */
     public TerrainGenerator(long seed) {
         this.seed = seed;
         this.heightNoise = new PerlinNoise(seed);
-        this.caveNoise = new PerlinNoise(seed + 1); // Different seed for caves
-        this.biomeNoise = new PerlinNoise(seed + 2); // Different seed for biomes
+        this.caveNoise = new PerlinNoise(seed + 1); // Semilla diferente para cuevas
+        this.biomeNoise = new PerlinNoise(seed + 2); // Semilla diferente para biomas
         this.random = new Random(seed);
         this.blockRegistry = BlockRegistry.getInstance();
     }
     
     /**
-     * Generates terrain for a chunk
+     * Genera terreno para un chunk
      * 
-     * @param chunk The chunk to generate terrain for
+     * @param chunk El chunk para generar terreno
      */
     public void generateTerrain(Chunk chunk) {
         int chunkX = chunk.getChunkX();
         int chunkZ = chunk.getChunkZ();
         
-        // Fill chunk with air initially
+        // Llenar chunk con aire inicialmente
         chunk.fill(BlockRegistry.AIR_ID);
         
-        // Generate base terrain
+        // Generar terreno base
         for (int x = 0; x < Chunk.WIDTH; x++) {
             for (int z = 0; z < Chunk.DEPTH; z++) {
                 int worldX = chunkX * Chunk.WIDTH + x;
                 int worldZ = chunkZ * Chunk.DEPTH + z;
                 
-                // Determine biome for this column
+                // Determinar bioma para esta columna
                 int biome = getBiomeAt(worldX, worldZ);
                 
-                // Get base terrain height
+                // Obtener altura base del terreno
                 int terrainHeight = getTerrainHeight(worldX, worldZ, biome);
                 
-                // Bedrock layer at bottom
+                // Capa de bedrock en el fondo
                 chunk.setBlockId(x, 0, z, BlockRegistry.BEDROCK_ID);
                 
-                // Stone layer
+                // Capa de piedra
                 int stoneHeight = Math.min(terrainHeight, STONE_HEIGHT);
                 for (int y = 1; y <= stoneHeight; y++) {
-                    // Check for caves
+                    // Comprobar cuevas
                     if (!isCave(worldX, y, worldZ)) {
                         chunk.setBlockId(x, y, z, BlockRegistry.STONE_ID);
                     }
                 }
                 
-                // Apply biome-specific surface layers
+                // Aplicar capas superficiales específicas de bioma
                 applyBiomeSurface(chunk, x, z, terrainHeight, biome);
             }
         }
@@ -116,9 +116,9 @@ public class TerrainGenerator {
     }
     
     /**
-     * Adds features like trees, plants, etc. to a generated chunk
+     * Añade características como árboles, plantas, etc. a un chunk generado
      * 
-     * @param chunk The chunk to populate with features
+     * @param chunk El chunk a poblar con características
      */
     public void populateChunk(Chunk chunk) {
         if (!chunk.isGenerated()) {
@@ -128,20 +128,20 @@ public class TerrainGenerator {
         int chunkX = chunk.getChunkX();
         int chunkZ = chunk.getChunkZ();
         
-        // Random with chunk-specific seed for consistent generation
+        // Random con semilla específica de chunk para generación consistente
         Random chunkRandom = new Random(seed + chunkX * 341873128712L + chunkZ * 132897987541L);
         
-        // Generate trees
+        // Generar árboles
         for (int x = 2; x < Chunk.WIDTH - 2; x++) {
             for (int z = 2; z < Chunk.DEPTH - 2; z++) {
                 int worldX = chunkX * Chunk.WIDTH + x;
                 int worldZ = chunkZ * Chunk.DEPTH + z;
                 
-                // Determine biome
+                // Determinar bioma
                 int biome = getBiomeAt(worldX, worldZ);
                 
-                // Only generate trees in forest biome with higher probability
-                // and plains with lower probability
+                // Solo generar árboles en bioma de bosque con mayor probabilidad
+                // y llanuras con menor probabilidad
                 double treeProbability = 0;
                 if (biome == BIOME_FOREST) {
                     treeProbability = TREE_PROBABILITY * 4;
@@ -149,7 +149,7 @@ public class TerrainGenerator {
                     treeProbability = TREE_PROBABILITY;
                 }
                 
-                // Find top solid block
+                // Encontrar bloque sólido superior
                 int y;
                 for (y = Chunk.HEIGHT - 1; y > 0; y--) {
                     Block block = chunk.getBlock(x, y, z);
@@ -158,7 +158,7 @@ public class TerrainGenerator {
                     }
                 }
                 
-                // If top block is grass and random check passes, generate a tree
+                // Si el bloque superior es hierba y la comprobación aleatoria pasa, generar un árbol
                 if (chunk.getBlockId(x, y, z) == BlockRegistry.GRASS_ID && 
                         chunkRandom.nextDouble() < treeProbability) {
                     generateTree(chunk, x, y + 1, z, chunkRandom);
@@ -170,25 +170,25 @@ public class TerrainGenerator {
     }
     
     /**
-     * Generates a tree at the specified position
+     * Genera un árbol en la posición especificada
      * 
-     * @param chunk The chunk to place the tree in
-     * @param x Local X position in chunk
-     * @param y Y position (should be above ground)
-     * @param z Local Z position in chunk
-     * @param random Random instance for tree generation
+     * @param chunk El chunk para colocar el árbol
+     * @param x Posición X local en chunk
+     * @param y Posición Y (debería ser encima del suelo)
+     * @param z Posición Z local en chunk
+     * @param random Instancia Random para generación del árbol
      */
     private void generateTree(Chunk chunk, int x, int y, int z, Random random) {
-        // Determine tree height
+        // Determinar altura del árbol
         int treeHeight = TREE_HEIGHT_MIN + random.nextInt(TREE_HEIGHT_MAX - TREE_HEIGHT_MIN + 1);
         
-        // Generate trunk
+        // Generar tronco
         for (int trunkY = y; trunkY < y + treeHeight; trunkY++) {
             if (trunkY < 0 || trunkY >= Chunk.HEIGHT) continue;
             chunk.setBlockId(x, trunkY, z, BlockRegistry.WOOD_ID);
         }
         
-        // Generate leaves
+        // Generar hojas
         int leafRadius = 2;
         int leafBottom = y + treeHeight - 3;
         int leafTop = y + treeHeight;
@@ -196,23 +196,23 @@ public class TerrainGenerator {
         for (int leafY = leafBottom; leafY <= leafTop; leafY++) {
             if (leafY < 0 || leafY >= Chunk.HEIGHT) continue;
             
-            // Smaller radius at top
+            // Radio más pequeño en la cima
             int radius = (leafY == leafTop) ? 1 : leafRadius;
             
             for (int leafX = x - radius; leafX <= x + radius; leafX++) {
                 for (int leafZ = z - radius; leafZ <= z + radius; leafZ++) {
-                    // Skip corners for rounded appearance
+                    // Omitir esquinas para apariencia redondeada
                     if ((leafX == x - radius || leafX == x + radius) && 
                         (leafZ == z - radius || leafZ == z + radius)) {
                         continue;
                     }
                     
-                    // Skip trunk position
+                    // Omitir posición de tronco
                     if (leafX == x && leafZ == z) {
                         continue;
                     }
                     
-                    // If in chunk bounds and not solid block, place leaf
+                    // Si está dentro de los límites del chunk y no es un bloque sólido, colocar hoja
                     if (leafX >= 0 && leafX < Chunk.WIDTH && leafZ >= 0 && leafZ < Chunk.DEPTH) {
                         if (!chunk.getBlock(leafX, leafY, leafZ).isSolid()) {
                             chunk.setBlockId(leafX, leafY, leafZ, BlockRegistry.LEAVES_ID);
@@ -224,43 +224,45 @@ public class TerrainGenerator {
     }
     
     /**
-     * Applies biome-specific surface blocks
+     * Aplica bloques superficiales específicos de bioma
      * 
-     * @param chunk The chunk to modify
-     * @param x Local X position in chunk
-     * @param z Local Z position in chunk
-     * @param height Terrain height at this position
-     * @param biome Biome type
+     * @param chunk El chunk a modificar
+     * @param x Posición X local en chunk
+     * @param z Posición Z local en chunk
+     * @param height Altura del terreno en esta posición
+     * @param biome Tipo de bioma
      */
     private void applyBiomeSurface(Chunk chunk, int x, int z, int height, int biome) {
-        // Apply appropriate surface blocks based on biome and height
+        // Aplicar bloques superficiales apropiados según bioma y altura
         if (height < SEA_LEVEL) {
-            // Water areas
+            // Áreas de agua
             for (int y = height + 1; y <= SEA_LEVEL; y++) {
                 chunk.setBlockId(x, y, z, BlockRegistry.WATER_ID);
             }
             
-            // Underwater surfaces
+            // Superficies submarinas
             if (height >= SEA_LEVEL - BEACH_HEIGHT) {
-                // Sand for shallow areas
+                // Arena para áreas poco profundas
                 chunk.setBlockId(x, height, z, BlockRegistry.SAND_ID);
                 
-                // Add a layer of sand underneath
+                // Añadir una capa de arena debajo
                 for (int y = height - 1; y > height - 3 && y > 0; y--) {
                     if (chunk.getBlockId(x, y, z) == BlockRegistry.STONE_ID) {
                         chunk.setBlockId(x, y, z, BlockRegistry.SAND_ID);
                     }
                 }
             } else {
-                // Dirt for deeper areas
+                // Tierra para áreas más profundas
                 chunk.setBlockId(x, height, z, BlockRegistry.DIRT_ID);
             }
         } else {
-            // Above water
+            // Por encima del agua
             switch (biome) {
                 case BIOME_DESERT:
-                    // Desert: sand surface with sand underneath
+                    // Desierto: superficie de arena con arena debajo
                     chunk.setBlockId(x, height, z, BlockRegistry.SAND_ID);
+                    
+                    // Añadir una capa de arena debajo
                     for (int y = height - 1; y > height - 4 && y > 0; y--) {
                         if (chunk.getBlockId(x, y, z) == BlockRegistry.STONE_ID) {
                             chunk.setBlockId(x, y, z, BlockRegistry.SAND_ID);
@@ -269,18 +271,18 @@ public class TerrainGenerator {
                     break;
                     
                 case BIOME_MOUNTAINS:
-                    // Mountains: higher areas are stone, lower are grass/dirt
+                    // Montañas: áreas más altas son de piedra, más bajas son de hierba/tierra
                     if (height > SEA_LEVEL + 20) {
-                        // Stone tops for high mountains
+                        // Cimas de piedra para montañas altas
                         if (height > SEA_LEVEL + 35) {
-                            // No top layer changes, keep as stone
+                            // Sin cambios en capa superior, mantener como piedra
                         } else {
-                            // Grass transitions at lower elevations
+                            // Transiciones de hierba en elevaciones más bajas
                             chunk.setBlockId(x, height, z, BlockRegistry.GRASS_ID);
                             chunk.setBlockId(x, height - 1, z, BlockRegistry.DIRT_ID);
                         }
                     } else {
-                        // Standard surface
+                        // Superficie estándar
                         chunk.setBlockId(x, height, z, BlockRegistry.GRASS_ID);
                         for (int y = height - 1; y > height - DIRT_DEPTH && y > 0; y--) {
                             if (chunk.getBlockId(x, y, z) == BlockRegistry.STONE_ID) {
@@ -293,9 +295,9 @@ public class TerrainGenerator {
                 case BIOME_PLAINS:
                 case BIOME_FOREST:
                 default:
-                    // Standard grass and dirt
+                    // Hierba y tierra estándar
                     if (height <= SEA_LEVEL + BEACH_HEIGHT) {
-                        // Beach
+                        // Playa
                         chunk.setBlockId(x, height, z, BlockRegistry.SAND_ID);
                         for (int y = height - 1; y > height - 3 && y > 0; y--) {
                             if (chunk.getBlockId(x, y, z) == BlockRegistry.STONE_ID) {
@@ -303,7 +305,7 @@ public class TerrainGenerator {
                             }
                         }
                     } else {
-                        // Grass with dirt underneath
+                        // Hierba con tierra debajo
                         chunk.setBlockId(x, height, z, BlockRegistry.GRASS_ID);
                         for (int y = height - 1; y > height - DIRT_DEPTH && y > 0; y--) {
                             if (chunk.getBlockId(x, y, z) == BlockRegistry.STONE_ID) {
@@ -317,18 +319,18 @@ public class TerrainGenerator {
     }
     
     /**
-     * Determines the biome type at the specified coordinates
+     * Determina el tipo de bioma en las coordenadas especificadas
      * 
-     * @param worldX X coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @return Biome type (0-3)
+     * @param worldX Coordenada X en espacio del mundo
+     * @param worldZ Coordenada Z en espacio del mundo
+     * @return Tipo de bioma (0-3)
      */
     public int getBiomeAt(int worldX, int worldZ) {
-        // Use Perlin noise for smooth biome transitions
+        // Usar ruido de Perlin para transiciones suaves de bioma
         double biomeValue = biomeNoise.octaveNoise(
                 worldX / BIOME_SCALE, 0, worldZ / BIOME_SCALE, BIOME_OCTAVES, 0.5);
         
-        // Map noise value to biome type
+        // Mapear valor de ruido a tipo de bioma
         if (biomeValue < -0.5) {
             return BIOME_DESERT;
         } else if (biomeValue < 0) {
@@ -341,47 +343,54 @@ public class TerrainGenerator {
     }
     
     /**
-     * Gets the terrain height at the specified coordinates
+     * Obtiene la altura del terreno en las coordenadas especificadas
      * 
-     * @param worldX X coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @param biome Biome type to use for height calculation
-     * @return Y coordinate of surface
+     * @param worldX Coordenada X en espacio del mundo
+     * @param worldZ Coordenada Z en espacio del mundo
+     * @param biome Tipo de bioma a usar para cálculo de altura
+     * @return Coordenada Y de superficie
      */
     public int getTerrainHeight(int worldX, int worldZ, int biome) {
-        // Get biome settings
+        // Obtener configuración para este bioma
         double maxHeight = BIOME_SETTINGS[biome][0];
-        double scale = BIOME_SETTINGS[biome][1];
+        double terrainScale = BIOME_SETTINGS[biome][1];
         int octaves = (int) BIOME_SETTINGS[biome][2];
         
-        // Base height is sea level
-        double height = heightNoise.getHeightAt(worldX, worldZ, octaves, scale, maxHeight);
+        // Usar ruido de Perlin para calcular la altura base
+        double noiseHeight = heightNoise.octaveNoise(
+                worldX / terrainScale, 0, worldZ / terrainScale, octaves, 0.5);
         
-        // Add to sea level
-        return SEA_LEVEL + (int) height;
+        // Mapear el ruido de altura al rango correcto
+        noiseHeight = (noiseHeight + 1.0) / 2.0; // Mapear de [-1,1] a [0,1]
+        
+        // Ajustar altura base según bioma
+        int baseHeight = (int) (noiseHeight * maxHeight);
+        
+        // Aplicar nivel del mar como base
+        return baseHeight + SEA_LEVEL - 10;
     }
     
     /**
-     * Determines if a cave should be present at the specified coordinates
+     * Determina si debería haber una cueva en las coordenadas especificadas
      * 
-     * @param worldX X coordinate
-     * @param worldY Y coordinate
-     * @param worldZ Z coordinate
-     * @return True if there should be a cave (air block)
+     * @param worldX Coordenada X
+     * @param worldY Coordenada Y
+     * @param worldZ Coordenada Z
+     * @return Verdadero si debería haber una cueva (bloque de aire)
      */
     private boolean isCave(int worldX, int worldY, int worldZ) {
-        // Don't generate caves above sea level or near the bottom
+        // No generar cuevas por encima del nivel del mar o cerca del fondo
         if (worldY > SEA_LEVEL - 5 || worldY < 10) {
             return false;
         }
         
-        // 3D Perlin noise for cave system
+        // Ruido de Perlin 3D para sistema de cuevas
         double caveNoiseSample = caveNoise.octaveNoise(
                 worldX / CAVE_SCALE, worldY / CAVE_SCALE, worldZ / CAVE_SCALE, 
                 CAVE_OCTAVES, 0.5);
         
-        // Use a threshold to determine if this is a cave
-        // Higher threshold near the surface for fewer surface cave entrances
+        // Usar un umbral para determinar si esto es una cueva
+        // Umbral más alto cerca de la superficie para menos entradas de cueva superficiales
         double threshold = CAVE_THRESHOLD;
         if (worldY > SEA_LEVEL - 15) {
             threshold += (worldY - (SEA_LEVEL - 15)) * 0.05;

@@ -10,6 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
+import main.java.com.minefocado.game.render.ShaderLoader;
+import main.java.com.minefocado.game.render.ShaderProgram;
+import main.java.com.minefocado.game.render.Texture;
 import main.java.com.minefocado.game.world.blocks.Block;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 import main.java.com.minefocado.game.world.chunk.Chunk;

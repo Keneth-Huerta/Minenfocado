@@ -17,6 +17,8 @@ import static org.lwjgl.system.MemoryUtil.*;
 
 import java.nio.IntBuffer;
 
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.Version;
@@ -156,20 +158,27 @@ public class MinefocadoGame {
         // Initialize block registry first (singleton)
         BlockRegistry blockRegistry = BlockRegistry.getInstance();
         // Ensure block registry is initialized before creating the world
-        System.out.println("Block registry initialized with " + blockRegistry.getClass().getSimpleName());
+        System.out.println("Block registry initialized with " + blockRegistry.getBlockCount() + " blocks");
         
-        // Create world with random seed
-        long seed = System.currentTimeMillis();
-        world = new World(seed);
-        
-        // Create player at position (0, 70, 0) - should be above ground level
-        player = new Player(0, 70, 0, world);
-        
-        // Initialize camera projection matrix
-        player.getCamera().updateProjectionMatrix(WIDTH, HEIGHT);
-        
-        // Initialize game timing
-        lastFrameTime = System.nanoTime();
+        try {
+            // Create world with random seed
+            long seed = System.currentTimeMillis();
+            world = new World(seed);
+            System.out.println("World initialized with seed: " + seed);
+            
+            // Create player at position (0, 100, 0) - well above ground level to ensure no spawning inside terrain
+            player = new Player(0, 100, 0, world);
+            
+            // Initialize camera projection matrix
+            player.getCamera().updateProjectionMatrix(WIDTH, HEIGHT);
+            
+            // Initialize game timing
+            lastFrameTime = System.nanoTime();
+            
+        } catch (Exception e) {
+            System.err.println("Error initializing game: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void loop() {
@@ -203,6 +212,8 @@ public class MinefocadoGame {
         player.update(deltaTime);
         
         // Update world (chunk loading/unloading)
+        Vector3f playerPos = player.getPosition();
+        world.update(playerPos.x, playerPos.z);
         world.updateChunkMeshes();
     }
     
@@ -211,8 +222,13 @@ public class MinefocadoGame {
         glClearColor(0.529f, 0.808f, 0.922f, 0.0f); // Sky blue color
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        // Get camera matrices for rendering
+        Matrix4f projectionMatrix = player.getCamera().getProjectionMatrix();
+        Matrix4f viewMatrix = player.getCamera().getViewMatrix();
+        Vector3f playerPos = player.getPosition();
+        
         // Render world (chunks)
-        world.render();
+        world.render(projectionMatrix, viewMatrix, playerPos);
         
         // Render UI and HUD (will be implemented later)
         
@@ -246,7 +262,8 @@ public class MinefocadoGame {
                 
                 // Handle hotbar selection with number keys
                 if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
-                    player.changeHotbarSelection(key - GLFW_KEY_1);
+                    int slot = key - GLFW_KEY_1;
+                    player.setHotbarSelection(slot);
                 }
                 
                 // Toggle flying mode with F key
@@ -299,6 +316,4 @@ public class MinefocadoGame {
         // Update camera projection matrix
         player.getCamera().updateProjectionMatrix(width, height);
     }
-
-   
 }

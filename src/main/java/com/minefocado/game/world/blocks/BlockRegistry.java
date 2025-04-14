@@ -145,12 +145,21 @@ public class BlockRegistry {
      * Get a block by its ID
      * 
      * @param id Block ID
-     * @return Block instance, or null if not found
+     * @return Block instance, or air block if not found
      */
     public Block getBlock(byte id) {
+        // Handle invalid IDs
         if (id < 0 || id >= MAX_BLOCKS) {
+            System.err.println("Warning: Invalid block ID requested: " + id + ", returning AIR");
             return blocksByID[AIR_ID]; // Return air for invalid IDs
         }
+        
+        // Handle null blocks (unregistered IDs)
+        if (blocksByID[id] == null) {
+            System.err.println("Warning: Unregistered block ID requested: " + id + ", returning AIR");
+            return blocksByID[AIR_ID];
+        }
+        
         return blocksByID[id];
     }
     

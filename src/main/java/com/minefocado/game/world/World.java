@@ -165,10 +165,19 @@ public class World {
         // Obtener el chunk
         Chunk chunk = getChunk(chunkX, chunkZ);
         if (chunk != null) {
-            return chunk.getBlock(localX, worldY, localZ);
+            Block block = chunk.getBlock(localX, worldY, localZ);
+            if (block != null) {
+                return block;
+            }
         }
         
-        // Devolver aire para chunks no cargados
+        // Check if blockRegistry is null
+        if (blockRegistry == null) {
+            System.err.println("Error: BlockRegistry is null in World.getBlockAt");
+            return null;
+        }
+        
+        // Devolver aire para chunks no cargados o bloques inválidos
         return blockRegistry.getBlock(BlockRegistry.AIR_ID);
     }
     
@@ -182,6 +191,18 @@ public class World {
      * @return Verdadero si el bloque se colocó correctamente
      */
     public boolean setBlockAt(int worldX, int worldY, int worldZ, int blockId) {
+        // Verificar que el blockId sea válido
+        if (blockRegistry == null) {
+            System.err.println("Error: BlockRegistry is null in World.setBlockAt");
+            return false;
+        }
+        
+        // Opcional: verificar que el blockId sea válido
+        if (blockRegistry.getBlock(blockId) == null) {
+            System.err.println("Warning: Attempting to place invalid block ID: " + blockId);
+            // Continuar de todos modos, ya que algunos bloques podrían ser válidos aunque no estén registrados
+        }
+        
         // Convertir a coordenadas de chunk
         int chunkX = Math.floorDiv(worldX, Chunk.WIDTH);
         int chunkZ = Math.floorDiv(worldZ, Chunk.DEPTH);
@@ -193,15 +214,20 @@ public class World {
         // Obtener el chunk
         Chunk chunk = getChunk(chunkX, chunkZ);
         if (chunk != null) {
-            chunk.setBlockId(localX, worldY, localZ, blockId);
-            
-            // Actualizar chunks adyacentes si este bloque está en un límite de chunk
-            if (localX == 0 || localX == Chunk.WIDTH - 1 || 
-                localZ == 0 || localZ == Chunk.DEPTH - 1) {
-                updateAdjacentChunks(chunkX, chunkZ);
+            try {
+                chunk.setBlockId(localX, worldY, localZ, blockId);
+                
+                // Actualizar chunks adyacentes si este bloque está en un límite de chunk
+                if (localX == 0 || localX == Chunk.WIDTH - 1 || 
+                    localZ == 0 || localZ == Chunk.DEPTH - 1) {
+                    updateAdjacentChunks(chunkX, chunkZ);
+                }
+                
+                return true;
+            } catch (Exception e) {
+                System.err.println("Error setting block at (" + worldX + "," + worldY + "," + worldZ + "): " + e.getMessage());
+                return false;
             }
-            
-            return true;
         }
         
         return false;
@@ -368,11 +394,15 @@ public class World {
                 
                 // Solo poblar si el chunk está generado pero no poblado
                 if (chunk != null && chunk.isGenerated() && !chunk.isPopulated()) {
-                    // Poblar el chunk con características como árboles
-                    terrainGenerator.populateChunk(chunk);
-                    
-                    // Marcar el chunk como sucio para reconstruir su malla
-                    chunk.setMeshDirty(true);
+                    try {
+                        // Poblar el chunk con características como árboles
+                        terrainGenerator.populateChunk(chunk);
+                        
+                        // Marcar el chunk como sucio para reconstruir su malla
+                        chunk.setMeshDirty(true);
+                    } catch (Exception e) {
+                        System.err.println("Error al poblar chunk en " + x + "," + z + ": " + e.getMessage());
+                    }
                 }
             }
         }
@@ -457,73 +487,130 @@ public class World {
      * @param playerPos Posición del jugador para iluminación
      */
     public void render(Matrix4f projectionMatrix, Matrix4f viewMatrix, Vector3f playerPos) {
-        if (shaderProgram == null || textureAtlas == null) {
+        // Check if essential components are initialized
+        if (shaderProgram == null) {
+            System.err.println("Warning: Skipping world render because shaderProgram is null");
             return;
         }
         
+        if (textureAtlas == null) {
+            System.err.println("Warning: Skipping world render because textureAtlas is null");
+            return;
+        }
+        
+        // Check for null parameters
+        if (projectionMatrix == null) {
+            System.err.println("Warning: Null projectionMatrix passed to World.render()");
+            return;
+        }
+        
+        if (viewMatrix == null) {
+            System.err.println("Warning: Null viewMatrix passed to World.render()");
+            return;
+        }
+        
+        if (playerPos == null) {
+            System.err.println("Warning: Null playerPos passed to World.render()");
+            playerPos = new Vector3f(0, 0, 0); // Default position as fallback
+        }
+        
         // Vincular shader y textura
-        shaderProgram.bind();
-        textureAtlas.bind();
+        try {
+            shaderProgram.bind();
+        } catch (Exception e) {
+            System.err.println("Error binding shader program: " + e.getMessage());
+            return;
+        }
+        
+        try {
+            textureAtlas.bind();
+        } catch (Exception e) {
+            System.err.println("Error binding texture atlas: " + e.getMessage());
+            // Unbind shader before returning
+            shaderProgram.unbind();
+            return;
+        }
         
         // Establecer uniformes compartidos con try-catch para cada uno
         try {
             shaderProgram.setUniform("projectionMatrix", projectionMatrix);
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set projectionMatrix uniform: " + e.getMessage());
+            // Continue execution
         }
         
         try {
             shaderProgram.setUniform("viewMatrix", viewMatrix);
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set viewMatrix uniform: " + e.getMessage());
+            // Continue execution
         }
         
         try {
             shaderProgram.setUniform("textureSampler", 0); // Unidad de textura 0
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set textureSampler uniform: " + e.getMessage());
+            // Continue execution
         }
         
         // Establecer uniformes de iluminación
         try {
             shaderProgram.setUniform("lightPosition", new Vector3f(0, 100, 0)); // Posición del sol
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set lightPosition uniform: " + e.getMessage());
+            // Continue execution
         }
         
         try {
             shaderProgram.setUniform("viewPosition", playerPos);
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set viewPosition uniform: " + e.getMessage());
+            // Continue execution
         }
         
         try {
             shaderProgram.setUniform("ambientStrength", 0.6f);
         } catch (Exception e) {
-            // Ignorar si el uniform no existe
+            System.err.println("Warning: Failed to set ambientStrength uniform: " + e.getMessage());
+            // Continue execution
         }
         
         // Renderizar todos los chunks que están en distancia de renderizado
-        for (Chunk chunk : chunks.values()) {
-            int dx = chunk.getChunkX() - playerChunkX;
-            int dz = chunk.getChunkZ() - playerChunkZ;
-            
-            // Solo renderizar chunks dentro de la distancia de renderizado
-            if (Math.abs(dx) <= RENDER_DISTANCE && Math.abs(dz) <= RENDER_DISTANCE) {
-                ChunkMesh mesh = chunk.getMesh();
-                if (mesh != null) {
-                    try {
-                        mesh.render(shaderProgram);
-                    } catch (Exception e) {
-                        System.err.println("Error al renderizar chunk en " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": " + e.getMessage());
+        if (chunks != null) {
+            for (Chunk chunk : chunks.values()) {
+                if (chunk == null) continue;
+                
+                int dx = chunk.getChunkX() - playerChunkX;
+                int dz = chunk.getChunkZ() - playerChunkZ;
+                
+                // Solo renderizar chunks dentro de la distancia de renderizado
+                if (Math.abs(dx) <= RENDER_DISTANCE && Math.abs(dz) <= RENDER_DISTANCE) {
+                    ChunkMesh mesh = chunk.getMesh();
+                    if (mesh != null) {
+                        try {
+                            mesh.render(shaderProgram);
+                        } catch (Exception e) {
+                            System.err.println("Error al renderizar chunk en " + chunk.getChunkX() + "," + chunk.getChunkZ() + ": " + e.getMessage());
+                        }
                     }
                 }
             }
+        } else {
+            System.err.println("Warning: chunks map is null in World.render()");
         }
         
-        // Desvincular
-        textureAtlas.unbind();
-        shaderProgram.unbind();
+        // Desvincular recursos con manejo de excepciones
+        try {
+            textureAtlas.unbind();
+        } catch (Exception e) {
+            System.err.println("Error unbinding texture atlas: " + e.getMessage());
+        }
+        
+        try {
+            shaderProgram.unbind();
+        } catch (Exception e) {
+            System.err.println("Error unbinding shader program: " + e.getMessage());
+        }
     }
     
     /**

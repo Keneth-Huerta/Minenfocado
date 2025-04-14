@@ -18,9 +18,9 @@ public class TerrainGenerator {
     private static final int STONE_HEIGHT = 48;
     
     // Constantes de generación de cuevas
-    private static final double CAVE_THRESHOLD = 0.3;
+    private static final double CAVE_THRESHOLD = 0.45; // Aumentado de 0.3 a 0.45 para generar menos cuevas
     private static final int CAVE_OCTAVES = 3;
-    private static final double CAVE_SCALE = 40.0;
+    private static final double CAVE_SCALE = 60.0; // Aumentado de 40.0 a 60.0 para cuevas más grandes pero menos numerosas
     
     // Constantes de generación de árboles
     private static final int TREE_HEIGHT_MIN = 4;
@@ -393,9 +393,12 @@ public class TerrainGenerator {
         // Umbral más alto cerca de la superficie para menos entradas de cueva superficiales
         double threshold = CAVE_THRESHOLD;
         if (worldY > SEA_LEVEL - 15) {
-            threshold += (worldY - (SEA_LEVEL - 15)) * 0.05;
+            // Incrementar umbral cerca de la superficie para reducir entradas de cuevas
+            threshold += (worldY - (SEA_LEVEL - 15)) * 0.08;
         }
         
-        return caveNoiseSample > threshold;
+        // Verificación adicional para evitar cuevas aisladas y mejorar conectividad
+        // Solo generar cuevas si el ruido es suficientemente alto
+        return caveNoiseSample > threshold && caveNoiseSample < threshold + 0.3;
     }
 }

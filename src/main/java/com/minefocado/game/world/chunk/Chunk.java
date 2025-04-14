@@ -134,7 +134,22 @@ public class Chunk {
      */
     public Block getBlock(int x, int y, int z) {
         byte id = getBlockId(x, y, z);
-        return blockRegistry.getBlock(id);
+        
+        // Check if blockRegistry is null
+        if (blockRegistry == null) {
+            System.err.println("Error: BlockRegistry is null in Chunk.getBlock");
+            return null;
+        }
+        
+        Block block = blockRegistry.getBlock(id);
+        
+        // If the block is null, return air block as fallback
+        if (block == null) {
+            System.err.println("Warning: Got null block for ID " + id + " at " + x + "," + y + "," + z);
+            return blockRegistry.getBlock(BlockRegistry.AIR_ID);
+        }
+        
+        return block;
     }
     
     /**
@@ -203,6 +218,12 @@ public class Chunk {
      * @return Bloque en la posición especificada, o aire si está fuera de límites
      */
     public Block getBlockInWorld(int worldX, int worldY, int worldZ) {
+        // Check if blockRegistry is null
+        if (blockRegistry == null) {
+            System.err.println("Error: BlockRegistry is null in Chunk.getBlockInWorld");
+            return null;
+        }
+        
         // Si las coordenadas Y están fuera de rango, devolver aire
         if (worldY < 0 || worldY >= HEIGHT) {
             return blockRegistry.getBlock(BlockRegistry.AIR_ID);
@@ -221,7 +242,17 @@ public class Chunk {
         } else {
             // Fuera de este chunk, delegar al mundo para obtener el bloque correcto
             try {
-                return world.getBlockAt(worldX, worldY, worldZ);
+                if (world == null) {
+                    System.err.println("Error: World is null in Chunk.getBlockInWorld");
+                    return blockRegistry.getBlock(BlockRegistry.AIR_ID);
+                }
+                
+                Block block = world.getBlockAt(worldX, worldY, worldZ);
+                if (block == null) {
+                    System.err.println("Warning: Got null block from world at " + worldX + "," + worldY + "," + worldZ);
+                    return blockRegistry.getBlock(BlockRegistry.AIR_ID);
+                }
+                return block;
             } catch (Exception e) {
                 // En caso de error (como chunks no cargados), devolver aire
                 System.err.println("Error obteniendo bloque en mundo: " + e.getMessage());

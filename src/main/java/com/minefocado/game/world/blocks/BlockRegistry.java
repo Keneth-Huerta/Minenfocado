@@ -148,9 +148,17 @@ public class BlockRegistry {
      * @return Instancia del bloque, o null si no se encuentra
      */
     public Block getBlock(byte id) {
+        // Handle invalid IDs
         if (id < 0 || id >= MAX_BLOCKS) {
             return blocksByID[AIR_ID]; // Devolver aire para IDs inválidos
         }
+        
+        // Handle null blocks (unregistered IDs)
+        if (blocksByID[id] == null) {
+            System.err.println("Warning: Unregistered block ID requested: " + id + ", returning AIR");
+            return blocksByID[AIR_ID];
+        }
+        
         return blocksByID[id];
     }
     

@@ -90,15 +90,15 @@ public class MinefocadoGame {
         init();
         loop();
 
-        // Free the window callbacks and destroy the window
+        // Liberar los callbacks de la ventana y destruir la ventana
         glfwFreeCallbacks(window);
         glfwDestroyWindow(window);
 
-        // Terminate GLFW and free the error callback
+        // Terminar GLFW y liberar el callback de error
         glfwTerminate();
         glfwSetErrorCallback(null).free();
         
-        // Clean up game resources
+        // Liberar recursos del juego
         if (world != null) {
             world.cleanup();
         }
@@ -191,7 +191,7 @@ public class MinefocadoGame {
         
         // Inicializar primero el registro de bloques (singleton)
         BlockRegistry blockRegistry = BlockRegistry.getInstance();
-        // Ensure block registry is initialized before creating the world
+        // Asegurar que el registro de bloques esté inicializado antes de crear el mundo
         System.out.println("Block registry initialized with " + blockRegistry.getBlockCount() + " blocks");
         
         try {
@@ -258,7 +258,7 @@ public class MinefocadoGame {
             deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f;
             lastFrameTime = currentTime;
             
-            // Cap deltaTime to prevent physics glitches after pause/breakpoint
+            // Limitar deltaTime para prevenir problemas de física después de pausas/puntos de interrupción
             if (deltaTime > 0.1f) deltaTime = 0.1f;
             
             // Procesar entrada
@@ -273,7 +273,7 @@ public class MinefocadoGame {
             // Renderizar frame
             render();
             
-            // Poll for window events
+            // Sondear eventos de ventana
             glfwPollEvents();
         }
     }

@@ -6,16 +6,16 @@ import java.io.InputStreamReader;
 import java.util.stream.Collectors;
 
 /**
- * Utility class for loading shader code from resources
+ * Clase de utilidad para cargar código de shader desde recursos
  */
 public class ShaderLoader {
     
     /**
-     * Loads shader code from a resource file
+     * Carga código de shader desde un archivo de recursos
      * 
-     * @param resourcePath Path to the shader file in resources
-     * @return String containing the shader code
-     * @throws Exception If the resource cannot be loaded
+     * @param resourcePath Ruta al archivo de shader en recursos
+     * @return String que contiene el código del shader
+     * @throws Exception Si el recurso no puede ser cargado
      */
     public static String loadShader(String resourcePath) throws Exception {
         try (InputStream in = ShaderLoader.class.getClassLoader().getResourceAsStream(resourcePath);
@@ -23,16 +23,16 @@ public class ShaderLoader {
             
             return reader.lines().collect(Collectors.joining("\n"));
         } catch (Exception e) {
-            // If shader cannot be loaded from resources, use embedded default shaders
+            // Si el shader no puede ser cargado desde recursos, usar shaders por defecto embebidos
             return getDefaultShader(resourcePath);
         }
     }
     
     /**
-     * Provides default shader code if resource loading fails
+     * Proporciona código de shader por defecto si la carga del recurso falla
      * 
-     * @param resourcePath Path to identify which default shader to return
-     * @return Default shader code as string
+     * @param resourcePath Ruta para identificar qué shader por defecto devolver
+     * @return Código del shader por defecto como string
      */
     private static String getDefaultShader(String resourcePath) {
         if (resourcePath.contains("vertex")) {
@@ -43,15 +43,15 @@ public class ShaderLoader {
     }
     
     /**
-     * Returns a default vertex shader for rendering chunks
+     * Devuelve un vertex shader por defecto para renderizar chunks
      * 
-     * @return Default vertex shader code
+     * @return Código del vertex shader por defecto
      */
     public static String getDefaultVertexShader() {
         return "#version 330 core\n" +
                "layout (location = 0) in vec3 position;\n" +
-               "layout (location = 1) in vec2 texCoord;\n" +  // Changed from color to texCoord at location 1
-               "layout (location = 2) in vec3 normal;\n" +     // Changed normal to location 2
+               "layout (location = 1) in vec2 texCoord;\n" +  // Cambiado de color a texCoord en ubicación 1
+               "layout (location = 2) in vec3 normal;\n" +     // Cambiado normal a ubicación 2
                "\n" +
                "out vec2 fragTexCoord;\n" +
                "out vec3 fragNormal;\n" +
@@ -71,9 +71,9 @@ public class ShaderLoader {
     }
     
     /**
-     * Returns a default fragment shader for rendering chunks
+     * Devuelve un fragment shader por defecto para renderizar chunks
      * 
-     * @return Default fragment shader code
+     * @return Código del fragment shader por defecto
      */
     public static String getDefaultFragmentShader() {
         return "#version 330 core\n" +
@@ -89,10 +89,10 @@ public class ShaderLoader {
                "uniform float ambientStrength;\n" +
                "\n" +
                "void main() {\n" +
-               "    // Ambient lighting - aumentada para evitar partes muy oscuras\n" +
+               "    // Iluminación ambiental - aumentada para evitar partes muy oscuras\n" +
                "    vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);\n" +
                "    \n" +
-               "    // Diffuse lighting\n" +
+               "    // Iluminación difusa\n" +
                "    vec3 norm = normalize(fragNormal);\n" +
                "    \n" +
                "    // Dirección de luz desde arriba (como el sol) - no basada en posición\n" +
@@ -105,14 +105,14 @@ public class ShaderLoader {
                "    // Luz direccional adicional para la parte superior\n" +
                "    float topLight = max(dot(vec3(0.0, 1.0, 0.0), norm), 0.0) * 0.5;\n" +
                "    \n" +
-               "    // Combine lights\n" +
+               "    // Combinar luces\n" +
                "    vec3 lightResult = ambient + diffuse + vec3(topLight);\n" +
                "    \n" +
-               "    // Sample texture\n" +
+               "    // Muestrear textura\n" +
                "    vec4 texColor = texture(textureSampler, fragTexCoord);\n" +
                "    if (texColor.a < 0.1) discard; // Descartar píxeles transparentes\n" +
                "    \n" +
-               "    // Final color with tone mapping to prevent over-bright areas\n" +
+               "    // Color final con mapeo tonal para prevenir áreas demasiado brillantes\n" +
                "    outColor = vec4(lightResult, 1.0) * texColor;\n" +
                "}";
     }

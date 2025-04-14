@@ -15,57 +15,57 @@ import static org.lwjgl.opengl.GL30.*;
 import main.java.com.minefocado.game.render.ShaderProgram;
 
 /**
- * Represents a mesh for rendering a chunk in OpenGL
- * Handles vertex data management and rendering
+ * Representa una malla para renderizar un chunk en OpenGL
+ * Maneja la gestión de datos de vértices y renderizado
  */
 public class ChunkMesh {
-    // OpenGL object IDs - removed 'final' so they can be set to null after cleanup
-    private int vaoId;         // Vertex Array Object
-    private int posVboId;      // Position Vertex Buffer Object
-    private int texCoordVboId; // Texture Coordinate VBO
-    private int normalVboId;   // Normal VBO
-    private int indexVboId;    // Index Buffer Object
+    // IDs de objetos OpenGL - eliminado 'final' para que puedan ser nulos después de la limpieza
+    private int vaoId;         // Objeto de Array de Vértices
+    private int posVboId;      // Objeto de Buffer de Vértices para Posiciones
+    private int texCoordVboId; // VBO para Coordenadas de Textura
+    private int normalVboId;   // VBO para Normales
+    private int indexVboId;    // Objeto de Buffer de Índices
     
-    // Flag to track if mesh has been cleaned up
+    // Bandera para rastrear si la malla ha sido limpiada
     private boolean isCleanedUp = false;
     
-    // Mesh data
+    // Datos de la malla
     private final int vertexCount;
     
-    // Model matrix for transforming
+    // Matriz modelo para transformación
     private final Matrix4f modelMatrix;
     
-    // Chunk position in world space
+    // Posición del chunk en el espacio del mundo
     private final int chunkX;
     private final int chunkZ;
     
     /**
-     * Creates a new chunk mesh from the provided ChunkMeshData
+     * Crea una nueva malla de chunk a partir de los datos proporcionados en ChunkMeshData
      * IMPORTANTE: Este constructor DEBE ser llamado únicamente desde el hilo principal que tiene el contexto OpenGL
      * 
-     * @param chunkX X coordinate of the chunk
-     * @param chunkZ Z coordinate of the chunk
+     * @param chunkX Coordenada X del chunk
+     * @param chunkZ Coordenada Z del chunk
      * @param meshData Los datos de mesh pre-calculados
      */
     public ChunkMesh(int chunkX, int chunkZ, ChunkMeshData meshData) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         
-        // Calculate model matrix based on chunk position
+        // Calcular la matriz modelo basada en la posición del chunk
         modelMatrix = new Matrix4f().identity().translate(
                 chunkX * Chunk.WIDTH, 
                 0, 
                 chunkZ * Chunk.DEPTH);
         
-        // Get mesh data from ChunkMeshData
+        // Obtener datos de la malla desde ChunkMeshData
         float[] positions = meshData.getPositions();
         float[] normals = meshData.getNormals();
         float[] texCoords = meshData.getTextureCoords();
         int[] indices = meshData.getIndices();
 
-        // Si no hay datos, crear un mesh vacío
+        // Si no hay datos, crear una malla vacía
         if (!meshData.hasData()) {
-            // Initialize with empty data
+            // Inicializar con datos vacíos
             this.vaoId = -1;
             this.posVboId = -1;
             this.texCoordVboId = -1;
@@ -75,11 +75,11 @@ public class ChunkMesh {
             return;
         }
         
-        // Create and bind VAO - SOLO EN HILO PRINCIPAL
+        // Crear y enlazar VAO - SOLO EN HILO PRINCIPAL
         vaoId = glGenVertexArrays();
         glBindVertexArray(vaoId);
         
-        // Position VBO
+        // VBO de Posiciones
         posVboId = glGenBuffers();
         FloatBuffer posBuffer = MemoryUtil.memAllocFloat(positions.length);
         posBuffer.put(positions).flip();
@@ -88,7 +88,7 @@ public class ChunkMesh {
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(posBuffer);
         
-        // Texture Coordinates VBO
+        // VBO de Coordenadas de Textura
         texCoordVboId = glGenBuffers();
         FloatBuffer texCoordBuffer = MemoryUtil.memAllocFloat(texCoords.length);
         texCoordBuffer.put(texCoords).flip();
@@ -97,7 +97,7 @@ public class ChunkMesh {
         glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(texCoordBuffer);
         
-        // Normal VBO
+        // VBO de Normales
         normalVboId = glGenBuffers();
         FloatBuffer normalBuffer = MemoryUtil.memAllocFloat(normals.length);
         normalBuffer.put(normals).flip();
@@ -106,7 +106,7 @@ public class ChunkMesh {
         glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, 0);
         MemoryUtil.memFree(normalBuffer);
         
-        // Index VBO
+        // VBO de Índices
         indexVboId = glGenBuffers();
         IntBuffer indexBuffer = MemoryUtil.memAllocInt(indices.length);
         indexBuffer.put(indices).flip();
@@ -114,128 +114,128 @@ public class ChunkMesh {
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBuffer, GL_STATIC_DRAW);
         MemoryUtil.memFree(indexBuffer);
         
-        // Enable all vertex attribute arrays
-        glEnableVertexAttribArray(0); // Position
-        glEnableVertexAttribArray(1); // Texture Coordinates
+        // Habilitar todos los arrays de atributos de vértices
+        glEnableVertexAttribArray(0); // Posición
+        glEnableVertexAttribArray(1); // Coordenadas de Textura
         glEnableVertexAttribArray(2); // Normal
         
-        // Unbind VAO
+        // Desenlazar VAO
         glBindVertexArray(0);
         
-        // Store vertex count
+        // Almacenar el conteo de vértices
         vertexCount = indices.length;
     }
     
     /**
-     * Renders the mesh with the specified shader
+     * Renderiza la malla con el shader especificado
      * 
-     * @param shader The shader program to use
+     * @param shader El programa de shader a usar
      */
     public void render(ShaderProgram shader) {
         if (vertexCount == 0 || vaoId == -1) {
-            return; // Don't render empty meshes
+            return; // No renderizar mallas vacías
         }
         
-        // Set model matrix in shader
+        // Establecer la matriz modelo en el shader
         shader.setUniform("modelMatrix", modelMatrix);
         
-        // Bind to the VAO
+        // Enlazar al VAO
         glBindVertexArray(vaoId);
         
-        // Draw the mesh
+        // Dibujar la malla
         glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_INT, 0);
         
-        // Unbind from the VAO
+        // Desenlazar del VAO
         glBindVertexArray(0);
     }
     
     /**
-     * Gets the model matrix for this chunk mesh
+     * Obtiene la matriz modelo para esta malla de chunk
      * 
-     * @return The model matrix
+     * @return La matriz modelo
      */
     public Matrix4f getModelMatrix() {
         return modelMatrix;
     }
     
     /**
-     * Gets the X coordinate of the chunk in chunk coordinates
+     * Obtiene la coordenada X del chunk en coordenadas de chunk
      * 
-     * @return Chunk X coordinate
+     * @return Coordenada X del chunk
      */
     public int getChunkX() {
         return chunkX;
     }
     
     /**
-     * Gets the Z coordinate of the chunk in chunk coordinates
+     * Obtiene la coordenada Z del chunk en coordenadas de chunk
      * 
-     * @return Chunk Z coordinate
+     * @return Coordenada Z del chunk
      */
     public int getChunkZ() {
         return chunkZ;
     }
     
     /**
-     * Check if this mesh has vertex data
+     * Verifica si esta malla tiene datos de vértices
      * 
-     * @return True if the mesh contains vertices
+     * @return True si la malla contiene vértices
      */
     public boolean hasVertices() {
         return vertexCount > 0 && vaoId != -1;
     }
     
     /**
-     * Cleans up resources used by the mesh
-     * Thread-safe - Can be called from any thread
+     * Limpia los recursos utilizados por la malla
+     * Seguro para hilos - Puede ser llamado desde cualquier hilo
      */
     public void cleanup() {
         if (vaoId == -1 || isCleanedUp) {
-            return; // Empty mesh or already cleaned
+            return; // Malla vacía o ya limpiada
         }
         
-        // If we're on the main thread, clean up directly
-        // Otherwise, queue for cleanup on the main thread
+        // Si estamos en el hilo principal, limpiar directamente
+        // De lo contrario, encolar para limpieza en el hilo principal
         if (org.lwjgl.glfw.GLFW.glfwGetCurrentContext() != 0) {
-            // We're on the main thread with an OpenGL context
+            // Estamos en el hilo principal con un contexto OpenGL
             cleanupOnMainThread();
         } else {
-            // We're on a background thread, queue for cleanup on main thread
+            // Estamos en un hilo de fondo, encolar para limpieza en el hilo principal
             main.java.com.minefocado.game.MinefocadoGame.queueMeshForCleanup(this);
         }
     }
     
     /**
-     * Perform actual OpenGL cleanup operations (MUST be called from main thread)
-     * This is called either directly from cleanup() if on main thread
-     * or via the cleanup queue in MinefocadoGame
+     * Realiza las operaciones de limpieza de OpenGL (DEBE ser llamado desde el hilo principal)
+     * Esto se llama directamente desde cleanup() si estamos en el hilo principal
+     * o a través de la cola de limpieza en MinefocadoGame
      */
     public void cleanupOnMainThread() {
         if (vaoId == -1 || isCleanedUp) {
-            return; // Empty mesh or already cleaned up
+            return; // Malla vacía o ya limpiada
         }
         
         try {
-            // Disable vertex attribute arrays
+            // Deshabilitar arrays de atributos de vértices
             glDisableVertexAttribArray(0);
             glDisableVertexAttribArray(1);
             glDisableVertexAttribArray(2);
             
-            // Delete VBOs
+            // Eliminar VBOs
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glDeleteBuffers(posVboId);
             glDeleteBuffers(texCoordVboId);
             glDeleteBuffers(normalVboId);
             glDeleteBuffers(indexVboId);
             
-            // Delete the VAO
+            // Eliminar el VAO
             glBindVertexArray(0);
             glDeleteVertexArrays(vaoId);
             
-            // Mark as cleaned up
+            // Marcar como limpiada
             isCleanedUp = true;
         } catch (Exception e) {
-            System.err.println("Error during mesh cleanup: " + e.getMessage());
+            System.err.println("Error durante la limpieza de la malla: " + e.getMessage());
         }
     }
 }

@@ -11,91 +11,91 @@ import org.lwjgl.system.MemoryUtil;
 import static org.lwjgl.opengl.GL20.*;
 
 /**
- * Represents an OpenGL shader program with vertex and fragment shaders.
- * Handles shader compilation, linking, and uniform management.
+ * Representa un programa shader OpenGL con shaders de vértices y fragmentos.
+ * Maneja la compilación de shaders, enlazado y gestión de uniformes.
  */
 public class ShaderProgram {
-    // Program and shader IDs
+    // IDs de programa y shader
     private final int programId;
     private int vertexShaderId;
     private int fragmentShaderId;
     
-    // Uniform cache for performance
+    // Caché de uniformes para rendimiento
     private final Map<String, Integer> uniforms;
     
-    // Temporary buffer for passing matrices
+    // Buffer temporal para pasar matrices
     private final FloatBuffer matrixBuffer;
     
     /**
-     * Creates a new shader program
+     * Crea un nuevo programa shader
      * 
-     * @param vertexShaderCode Vertex shader code as string
-     * @param fragmentShaderCode Fragment shader code as string
-     * @throws Exception If shader compilation or linking fails
+     * @param vertexShaderCode Código del shader de vértices como string
+     * @param fragmentShaderCode Código del shader de fragmentos como string
+     * @throws Exception Si la compilación o enlazado de shader falla
      */
     public ShaderProgram(String vertexShaderCode, String fragmentShaderCode) throws Exception {
         uniforms = new HashMap<>();
         matrixBuffer = MemoryUtil.memAllocFloat(16);
         
-        // Create shader program
+        // Crear programa shader
         programId = glCreateProgram();
         if (programId == 0) {
-            throw new Exception("Could not create shader program");
+            throw new Exception("No se pudo crear el programa shader");
         }
         
-        // Create and compile shaders
+        // Crear y compilar shaders
         vertexShaderId = createShader(vertexShaderCode, GL_VERTEX_SHADER);
         fragmentShaderId = createShader(fragmentShaderCode, GL_FRAGMENT_SHADER);
         
-        // Link program
+        // Enlazar programa
         link();
     }
     
     /**
-     * Creates a shader of the specified type
+     * Crea un shader del tipo especificado
      * 
-     * @param shaderCode Shader source code
-     * @param shaderType Shader type (GL_VERTEX_SHADER or GL_FRAGMENT_SHADER)
-     * @return Shader ID
-     * @throws Exception If shader compilation fails
+     * @param shaderCode Código fuente del shader
+     * @param shaderType Tipo de shader (GL_VERTEX_SHADER o GL_FRAGMENT_SHADER)
+     * @return ID del shader
+     * @throws Exception Si la compilación del shader falla
      */
     private int createShader(String shaderCode, int shaderType) throws Exception {
         int shaderId = glCreateShader(shaderType);
         if (shaderId == 0) {
-            throw new Exception("Error creating shader. Type: " + shaderType);
+            throw new Exception("Error creando shader. Tipo: " + shaderType);
         }
         
-        // Compile the shader
+        // Compilar el shader
         glShaderSource(shaderId, shaderCode);
         glCompileShader(shaderId);
         
-        // Check for compilation errors
+        // Verificar errores de compilación
         if (glGetShaderi(shaderId, GL_COMPILE_STATUS) == 0) {
-            throw new Exception("Error compiling shader: " + glGetShaderInfoLog(shaderId, 1024));
+            throw new Exception("Error compilando shader: " + glGetShaderInfoLog(shaderId, 1024));
         }
         
-        // Attach the shader to the program
+        // Adjuntar el shader al programa
         glAttachShader(programId, shaderId);
         
         return shaderId;
     }
     
     /**
-     * Links the shader program
+     * Enlaza el programa shader
      * 
-     * @throws Exception If program linking fails
+     * @throws Exception Si el enlazado del programa falla
      */
     private void link() throws Exception {
-        // Link program
+        // Enlazar programa
         glLinkProgram(programId);
         
-        // Check for linking errors
+        // Verificar errores de enlazado
         if (glGetProgrami(programId, GL_LINK_STATUS) == 0) {
-            throw new Exception("Error linking shader program: " + 
+            throw new Exception("Error enlazando programa shader: " + 
                     glGetProgramInfoLog(programId, 1024));
         }
         
-        // Detach shaders after linking
+        // Separar shaders después del enlazado
         if (vertexShaderId != 0) {
             glDetachShader(programId, vertexShaderId);
         }
@@ -103,65 +103,65 @@ public class ShaderProgram {
             glDetachShader(programId, fragmentShaderId);
         }
         
-        // Validate program
+        // Validar programa
         glValidateProgram(programId);
         if (glGetProgrami(programId, GL_VALIDATE_STATUS) == 0) {
-            System.err.println("Warning validating shader program: " + 
+            System.err.println("Advertencia validando programa shader: " + 
                     glGetProgramInfoLog(programId, 1024));
         }
     }
     
     /**
-     * Binds the shader program for use
+     * Vincula el programa shader para uso
      */
     public void bind() {
         glUseProgram(programId);
     }
     
     /**
-     * Unbinds the shader program
+     * Desvincula el programa shader
      */
     public void unbind() {
         glUseProgram(0);
     }
     
     /**
-     * Cleans up resources used by the shader program
+     * Limpia los recursos utilizados por el programa shader
      */
     public void cleanup() {
         unbind();
         
-        // Delete shaders
+        // Eliminar shaders
         if (programId != 0) {
             glDeleteProgram(programId);
         }
         
-        // Free matrix buffer
+        // Liberar buffer de matriz
         MemoryUtil.memFree(matrixBuffer);
     }
     
     /**
-     * Creates a uniform variable in the shader
+     * Crea una variable uniforme en el shader
      * 
-     * @param uniformName Name of the uniform
-     * @throws Exception If the uniform doesn't exist
+     * @param uniformName Nombre del uniforme
+     * @throws Exception Si el uniforme no existe
      */
     public void createUniform(String uniformName) throws Exception {
         int uniformLocation = glGetUniformLocation(programId, uniformName);
         if (uniformLocation < 0) {
-            throw new Exception("Could not find uniform: " + uniformName);
+            throw new Exception("No se pudo encontrar el uniforme: " + uniformName);
         }
         uniforms.put(uniformName, uniformLocation);
     }
     
     /**
-     * Sets an integer uniform
+     * Establece un uniforme entero
      * 
-     * @param uniformName Name of the uniform
-     * @param value Integer value
+     * @param uniformName Nombre del uniforme
+     * @param value Valor entero
      */
     public void setUniform(String uniformName, int value) {
-        // Verificar si el uniform existe antes de establecer el valor
+        // Verificar si el uniforme existe antes de establecer el valor
         Integer location = uniforms.get(uniformName);
         if (location != null) {
             glUniform1i(location, value);
@@ -169,13 +169,13 @@ public class ShaderProgram {
     }
     
     /**
-     * Sets a float uniform
+     * Establece un uniforme float
      * 
-     * @param uniformName Name of the uniform
-     * @param value Float value
+     * @param uniformName Nombre del uniforme
+     * @param value Valor float
      */
     public void setUniform(String uniformName, float value) {
-        // Verificar si el uniform existe antes de establecer el valor
+        // Verificar si el uniforme existe antes de establecer el valor
         Integer location = uniforms.get(uniformName);
         if (location != null) {
             glUniform1f(location, value);
@@ -183,13 +183,13 @@ public class ShaderProgram {
     }
     
     /**
-     * Sets a Vector3f uniform
+     * Establece un uniforme Vector3f
      * 
-     * @param uniformName Name of the uniform
-     * @param value Vector3f value
+     * @param uniformName Nombre del uniforme
+     * @param value Valor Vector3f
      */
     public void setUniform(String uniformName, Vector3f value) {
-        // Verificar si el uniform existe antes de establecer el valor
+        // Verificar si el uniforme existe antes de establecer el valor
         Integer location = uniforms.get(uniformName);
         if (location != null) {
             glUniform3f(location, value.x, value.y, value.z);
@@ -197,16 +197,16 @@ public class ShaderProgram {
     }
     
     /**
-     * Sets a Matrix4f uniform
+     * Establece un uniforme Matrix4f
      * 
-     * @param uniformName Name of the uniform
-     * @param value Matrix4f value
+     * @param uniformName Nombre del uniforme
+     * @param value Valor Matrix4f
      */
     public void setUniform(String uniformName, Matrix4f value) {
-        // Verificar si el uniform existe antes de establecer el valor
+        // Verificar si el uniforme existe antes de establecer el valor
         Integer location = uniforms.get(uniformName);
         if (location != null) {
-            // Store the matrix data in the buffer
+            // Almacenar los datos de la matriz en el buffer
             value.get(matrixBuffer);
             glUniformMatrix4fv(location, false, matrixBuffer);
         }

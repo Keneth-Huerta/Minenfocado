@@ -4,14 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Registry for all block types in the game.
- * Manages block IDs and provides lookup functionality.
+ * Registro para todos los tipos de bloques en el juego.
+ * Gestiona los IDs de bloques y proporciona funcionalidad de búsqueda.
  */
 public class BlockRegistry {
-    // Singleton instance
+    // Instancia singleton
     private static BlockRegistry instance;
     
-    // Constants for block IDs
+    // Constantes para IDs de bloques
     public static final byte AIR_ID = 0;
     public static final byte STONE_ID = 1;
     public static final byte DIRT_ID = 2;
@@ -27,15 +27,15 @@ public class BlockRegistry {
     public static final byte GOLD_ORE_ID = 12;
     public static final byte DIAMOND_ORE_ID = 13;
     
-    // Maximum number of blocks
+    // Número máximo de bloques
     public static final int MAX_BLOCKS = 256;
     
-    // Block registry storage
+    // Almacenamiento del registro de bloques
     private final Map<Byte, Block> blocks;
     private final Block[] blocksByID;
     
     /**
-     * Get the singleton instance of the registry
+     * Obtiene la instancia singleton del registro
      */
     public static synchronized BlockRegistry getInstance() {
         if (instance == null) {
@@ -45,22 +45,22 @@ public class BlockRegistry {
     }
     
     /**
-     * Private constructor to initialize the registry and register default blocks
+     * Constructor privado para inicializar el registro y registrar los bloques predeterminados
      */
     private BlockRegistry() {
         blocks = new HashMap<>();
         blocksByID = new Block[MAX_BLOCKS];
         
-        // Register default blocks
+        // Registrar bloques predeterminados
         registerDefaultBlocks();
     }
     
     /**
-     * Registers all default blocks in the game
+     * Registra todos los bloques predeterminados en el juego
      */
     private void registerDefaultBlocks() {
-        // Define texture indices for blocks
-        // In a real implementation these would be replaced with actual texture IDs
+        // Definir índices de textura para bloques
+        // En una implementación real, estos serían reemplazados con IDs de textura reales
         final int AIR_TEX = 0;
         final int STONE_TEX = 1;
         final int DIRT_TEX = 2;
@@ -78,40 +78,40 @@ public class BlockRegistry {
         final int GOLD_ORE_TEX = 14;
         final int DIAMOND_ORE_TEX = 15;
         
-        // Register blocks with their properties
-        // Air - completely transparent, not solid
+        // Registrar bloques con sus propiedades
+        // Aire - completamente transparente, no sólido
         registerBlock(new Block(AIR_ID, "Air", false, true, false, AIR_TEX));
         
-        // Stone - simple solid block
+        // Piedra - bloque sólido simple
         registerBlock(new Block(STONE_ID, "Stone", true, false, false, STONE_TEX));
         
-        // Dirt - simple solid block
+        // Tierra - bloque sólido simple
         registerBlock(new Block(DIRT_ID, "Dirt", true, false, false, DIRT_TEX));
         
-        // Grass - solid with different top texture
+        // Hierba - sólido con diferente textura superior
         registerBlock(new Block(GRASS_ID, "Grass", true, false, false, 
                 GRASS_TOP_TEX, DIRT_TEX, GRASS_SIDE_TEX, GRASS_SIDE_TEX, GRASS_SIDE_TEX, GRASS_SIDE_TEX));
         
-        // Sand - solid block
+        // Arena - bloque sólido
         registerBlock(new Block(SAND_ID, "Sand", true, false, false, SAND_TEX));
         
-        // Water - semi-transparent liquid
+        // Agua - líquido semi-transparente
         registerBlock(new Block(WATER_ID, "Water", false, true, true, WATER_TEX));
         
-        // Bedrock - indestructible solid block
+        // Roca madre - bloque sólido indestructible
         registerBlock(new Block(BEDROCK_ID, "Bedrock", true, false, false, BEDROCK_TEX));
         
-        // Wood - solid with different top/bottom
+        // Madera - sólido con parte superior/inferior diferente
         registerBlock(new Block(WOOD_ID, "Wood", true, false, false, 
                 WOOD_END_TEX, WOOD_END_TEX, WOOD_SIDE_TEX, WOOD_SIDE_TEX, WOOD_SIDE_TEX, WOOD_SIDE_TEX));
         
-        // Leaves - semi-transparent foliage
+        // Hojas - follaje semi-transparente
         registerBlock(new Block(LEAVES_ID, "Leaves", true, true, false, LEAVES_TEX));
         
-        // Glass - transparent solid
+        // Vidrio - sólido transparente
         registerBlock(new Block(GLASS_ID, "Glass", true, true, false, GLASS_TEX));
         
-        // Ore blocks - solid with ore textures
+        // Bloques de mineral - sólidos con texturas de mineral
         registerBlock(new Block(COAL_ORE_ID, "Coal Ore", true, false, false, COAL_ORE_TEX));
         registerBlock(new Block(IRON_ORE_ID, "Iron Ore", true, false, false, IRON_ORE_TEX));
         registerBlock(new Block(GOLD_ORE_ID, "Gold Ore", true, false, false, GOLD_ORE_TEX));
@@ -119,56 +119,56 @@ public class BlockRegistry {
     }
     
     /**
-     * Register a new block type
+     * Registra un nuevo tipo de bloque
      * 
-     * @param block The block to register
+     * @param block El bloque a registrar
      */
     public void registerBlock(Block block) {
         byte id = block.getId();
         
-        // Check ID range
+        // Comprobar rango de ID
         if (id < 0 || id >= MAX_BLOCKS) {
-            throw new IllegalArgumentException("Block ID out of range: " + id);
+            throw new IllegalArgumentException("ID de bloque fuera de rango: " + id);
         }
         
-        // Check for duplicate ID
+        // Comprobar ID duplicado
         if (blocksByID[id] != null) {
-            throw new IllegalArgumentException("Block ID already registered: " + id);
+            throw new IllegalArgumentException("ID de bloque ya registrado: " + id);
         }
         
-        // Register the block
+        // Registrar el bloque
         blocks.put(id, block);
         blocksByID[id] = block;
     }
     
     /**
-     * Get a block by its ID
+     * Obtiene un bloque por su ID
      * 
-     * @param id Block ID
-     * @return Block instance, or null if not found
+     * @param id ID del bloque
+     * @return Instancia del bloque, o null si no se encuentra
      */
     public Block getBlock(byte id) {
         if (id < 0 || id >= MAX_BLOCKS) {
-            return blocksByID[AIR_ID]; // Return air for invalid IDs
+            return blocksByID[AIR_ID]; // Devolver aire para IDs inválidos
         }
         return blocksByID[id];
     }
     
     /**
-     * Get a block by its ID
+     * Obtiene un bloque por su ID
      * 
-     * @param id Block ID as int
-     * @return Block instance, or null if not found
+     * @param id ID del bloque como entero
+     * @return Instancia del bloque, o null si no se encuentra
      */
     public Block getBlock(int id) {
         return getBlock((byte) id);
     }
     
     /**
-     * Get a block by its name
+     * Obtiene un bloque por su nombre
      * 
-     * @param name Block name
-     * @return Block instance, or null if not found
+     * @param name Nombre del bloque
+     * @return Instancia del bloque, o null si no se encuentra
      */
     public Block getBlockByName(String name) {
         for (Block block : blocks.values()) {
@@ -180,7 +180,7 @@ public class BlockRegistry {
     }
     
     /**
-     * Get the total number of registered blocks
+     * Obtiene el número total de bloques registrados
      */
     public int getBlockCount() {
         return blocks.size();

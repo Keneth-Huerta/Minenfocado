@@ -3,31 +3,31 @@ package main.java.com.minefocado.game.world.generation;
 import java.util.Random;
 
 /**
- * Implementation of Perlin noise for terrain generation.
- * Generates coherent noise that can be used for terrain height, biome maps, etc.
+ * Implementación de ruido Perlin para generación de terreno.
+ * Genera ruido coherente que puede ser usado para altura de terreno, mapas de biomas, etc.
  */
 public class PerlinNoise {
     private final long seed;
     private final Random random;
     
-    // Permutation table
+    // Tabla de permutación
     private final int[] permutation = new int[512];
     
     /**
-     * Creates a new Perlin noise generator with the specified seed
+     * Crea un nuevo generador de ruido Perlin con la semilla especificada
      * 
-     * @param seed The seed for the random number generator
+     * @param seed La semilla para el generador de números aleatorios
      */
     public PerlinNoise(long seed) {
         this.seed = seed;
         this.random = new Random(seed);
         
-        // Initialize the permutation table
+        // Inicializar la tabla de permutación
         for (int i = 0; i < 256; i++) {
             permutation[i] = i;
         }
         
-        // Shuffle based on the seed
+        // Mezclar basado en la semilla
         for (int i = 0; i < 256; i++) {
             int j = random.nextInt(256);
             int temp = permutation[i];
@@ -35,23 +35,23 @@ public class PerlinNoise {
             permutation[j] = temp;
         }
         
-        // Extend the permutation to avoid overflow
+        // Extender la permutación para evitar desbordamiento
         for (int i = 0; i < 256; i++) {
             permutation[i + 256] = permutation[i];
         }
     }
     
     /**
-     * Computes the dot product of a gradient vector and a distance vector
+     * Calcula el producto punto de un vector gradiente y un vector distancia
      * 
-     * @param hash Hash value to determine gradient vector
-     * @param x X coordinate
-     * @param y Y coordinate
-     * @param z Z coordinate
-     * @return Dot product result
+     * @param hash Valor hash para determinar el vector gradiente
+     * @param x Coordenada X
+     * @param y Coordenada Y
+     * @param z Coordenada Z
+     * @return Resultado del producto punto
      */
     private static double grad(int hash, double x, double y, double z) {
-        // Convert low 4 bits of hash into 12 gradient directions
+        // Convertir los 4 bits inferiores del hash en 12 direcciones de gradiente
         int h = hash & 15;
         double u = h < 8 ? x : y;
         double v = h < 4 ? y : h == 12 || h == 14 ? x : z;
@@ -59,45 +59,45 @@ public class PerlinNoise {
     }
     
     /**
-     * Smooth interpolation function (fade curve)
-     * Maps t to 6t^5 - 15t^4 + 10t^3
+     * Función de interpolación suave (curva de atenuación)
+     * Mapea t a 6t^5 - 15t^4 + 10t^3
      */
     private static double fade(double t) {
         return t * t * t * (t * (t * 6 - 15) + 10);
     }
     
     /**
-     * Linear interpolation between a and b by t
+     * Interpolación lineal entre a y b por t
      */
     private static double lerp(double t, double a, double b) {
         return a + t * (b - a);
     }
     
     /**
-     * Computes 3D Perlin noise at the given coordinates
+     * Calcula el ruido Perlin 3D en las coordenadas dadas
      * 
-     * @param x X coordinate
-     * @param y Y coordinate
-     * @param z Z coordinate
-     * @return Noise value between -1 and 1
+     * @param x Coordenada X
+     * @param y Coordenada Y
+     * @param z Coordenada Z
+     * @return Valor de ruido entre -1 y 1
      */
     public double noise(double x, double y, double z) {
-        // Find unit cube that contains the point
+        // Encontrar el cubo unitario que contiene el punto
         int X = (int) Math.floor(x) & 255;
         int Y = (int) Math.floor(y) & 255;
         int Z = (int) Math.floor(z) & 255;
         
-        // Find relative x, y, z of point in cube
+        // Encontrar x, y, z relativas del punto en el cubo
         x -= Math.floor(x);
         y -= Math.floor(y);
         z -= Math.floor(z);
         
-        // Compute fade curves for each of x, y, z
+        // Calcular curvas de atenuación para cada x, y, z
         double u = fade(x);
         double v = fade(y);
         double w = fade(z);
         
-        // Hash coordinates of the 8 cube corners
+        // Hash de las coordenadas de las 8 esquinas del cubo
         int A = permutation[X] + Y;
         int AA = permutation[A] + Z;
         int AB = permutation[A + 1] + Z;
@@ -105,7 +105,7 @@ public class PerlinNoise {
         int BA = permutation[B] + Z;
         int BB = permutation[B + 1] + Z;
         
-        // And add blended results from the 8 corners of the cube
+        // Sumar los resultados mezclados de las 8 esquinas del cubo
         return lerp(w, lerp(v, lerp(u, grad(permutation[AA], x, y, z),
                                        grad(permutation[BA], x - 1, y, z)),
                                lerp(u, grad(permutation[AB], x, y - 1, z),
@@ -117,21 +117,21 @@ public class PerlinNoise {
     }
     
     /**
-     * Generates Perlin noise at different octaves (frequencies) and combines them
-     * Higher octaves add more detail but have less influence
+     * Genera ruido Perlin en diferentes octavas (frecuencias) y las combina
+     * Las octavas más altas añaden más detalle pero tienen menos influencia
      * 
-     * @param x X coordinate
-     * @param y Y coordinate
-     * @param z Z coordinate
-     * @param octaves Number of octaves to compute
-     * @param persistence How much each octave contributes to the final result
-     * @return Combined noise value between -1 and 1
+     * @param x Coordenada X
+     * @param y Coordenada Y
+     * @param z Coordenada Z
+     * @param octaves Número de octavas a calcular
+     * @param persistence Cuánto contribuye cada octava al resultado final
+     * @return Valor de ruido combinado entre -1 y 1
      */
     public double octaveNoise(double x, double y, double z, int octaves, double persistence) {
         double total = 0;
         double frequency = 1;
         double amplitude = 1;
-        double maxValue = 0;  // Used for normalizing result
+        double maxValue = 0;  // Usado para normalizar el resultado
         
         for (int i = 0; i < octaves; i++) {
             total += noise(x * frequency, y * frequency, z * frequency) * amplitude;
@@ -141,33 +141,33 @@ public class PerlinNoise {
             frequency *= 2;
         }
         
-        // Normalize the result
+        // Normalizar el resultado
         return total / maxValue;
     }
     
     /**
-     * Returns a 2D heightmap using Perlin noise
+     * Devuelve un mapa de alturas 2D usando ruido Perlin
      * 
-     * @param worldX X coordinate in world space
-     * @param worldZ Z coordinate in world space
-     * @param octaves Number of octaves for the noise
-     * @param scale Scale of the noise (smaller values = larger features)
-     * @param height Maximum height of the terrain
-     * @return Height value between 0 and height
+     * @param worldX Coordenada X en el espacio del mundo
+     * @param worldZ Coordenada Z en el espacio del mundo
+     * @param octaves Número de octavas para el ruido
+     * @param scale Escala del ruido (valores más pequeños = características más grandes)
+     * @param height Altura máxima del terreno
+     * @return Valor de altura entre 0 y height
      */
     public double getHeightAt(int worldX, int worldZ, int octaves, double scale, double height) {
         double x = worldX / scale;
         double z = worldZ / scale;
         
-        // Map noise from [-1,1] to [0,1]
+        // Mapear ruido de [-1,1] a [0,1]
         double noise = (octaveNoise(x, 0, z, octaves, 0.5) + 1) / 2;
         
-        // Scale to desired height
+        // Escalar a la altura deseada
         return noise * height;
     }
     
     /**
-     * Gets the seed used for this noise generator
+     * Obtiene la semilla usada para este generador de ruido
      */
     public long getSeed() {
         return seed;

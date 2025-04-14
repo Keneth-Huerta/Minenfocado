@@ -66,7 +66,7 @@ public class Camera {
                     boolean right, boolean up, boolean down, float deltaTime) {
         float speed = MOVEMENT_SPEED * deltaTime;
         
-        // Calculate movement direction based on camera orientation
+        // Calcular la dirección de movimiento basada en la orientación de la cámara
         if (forward) {
             position.x += Math.sin(Math.toRadians(yaw)) * speed;
             position.z -= Math.cos(Math.toRadians(yaw)) * speed;

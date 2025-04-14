@@ -7,58 +7,58 @@ import main.java.com.minefocado.game.world.blocks.Block;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 
 /**
- * Builds a chunk mesh from block data
+ * Construye una malla de chunk a partir de datos de bloques
  */
 public class ChunkMeshBuilder {
-    // Direction vectors for the 6 faces of a cube
-    // Order: UP, DOWN, FRONT, BACK, LEFT, RIGHT
+    // Vectores de dirección para las 6 caras de un cubo
+    // Orden: ARRIBA, ABAJO, FRENTE, ATRÁS, IZQUIERDA, DERECHA
     private static final int[][] FACE_DIRECTIONS = {
-        { 0, 1, 0 },  // UP
-        { 0, -1, 0 }, // DOWN
-        { 0, 0, 1 },  // FRONT
-        { 0, 0, -1 }, // BACK
-        { -1, 0, 0 }, // LEFT
-        { 1, 0, 0 }   // RIGHT
+        { 0, 1, 0 },  // ARRIBA
+        { 0, -1, 0 }, // ABAJO
+        { 0, 0, 1 },  // FRENTE
+        { 0, 0, -1 }, // ATRÁS
+        { -1, 0, 0 }, // IZQUIERDA
+        { 1, 0, 0 }   // DERECHA
     };
     
-    // Vertices for each face (4 vertices per face, 3 coords per vertex)
+    // Vértices para cada cara (4 vértices por cara, 3 coordenadas por vértice)
     private static final float[][][] FACE_VERTICES = {
-        // UP face (y = 1)
+        // Cara ARRIBA (y = 1)
         {
             { 0, 1, 0 },
             { 1, 1, 0 },
             { 1, 1, 1 },
             { 0, 1, 1 }
         },
-        // DOWN face (y = 0)
+        // Cara ABAJO (y = 0)
         {
             { 0, 0, 1 },
             { 1, 0, 1 },
             { 1, 0, 0 },
             { 0, 0, 0 }
         },
-        // FRONT face (z = 1)
+        // Cara FRENTE (z = 1)
         {
             { 0, 0, 1 },
             { 0, 1, 1 },
             { 1, 1, 1 },
             { 1, 0, 1 }
         },
-        // BACK face (z = 0)
+        // Cara ATRÁS (z = 0)
         {
             { 1, 0, 0 },
             { 1, 1, 0 },
             { 0, 1, 0 },
             { 0, 0, 0 }
         },
-        // LEFT face (x = 0)
+        // Cara IZQUIERDA (x = 0)
         {
             { 0, 0, 0 },
             { 0, 1, 0 },
             { 0, 1, 1 },
             { 0, 0, 1 }
         },
-        // RIGHT face (x = 1)
+        // Cara DERECHA (x = 1)
         {
             { 1, 0, 1 },
             { 1, 1, 1 },
@@ -67,7 +67,7 @@ public class ChunkMeshBuilder {
         }
     };
     
-    // Texture coordinates for each face vertex
+    // Coordenadas de textura para cada vértice de la cara
     private static final float[][] TEX_COORDS = {
         { 0, 0 },
         { 1, 0 },
@@ -75,30 +75,30 @@ public class ChunkMeshBuilder {
         { 0, 1 }
     };
     
-    // Normal vectors for each face
+    // Vectores normales para cada cara
     private static final float[][] NORMALS = {
-        { 0, 1, 0 },  // UP
-        { 0, -1, 0 }, // DOWN
-        { 0, 0, 1 },  // FRONT
-        { 0, 0, -1 }, // BACK
-        { -1, 0, 0 }, // LEFT
-        { 1, 0, 0 }   // RIGHT
+        { 0, 1, 0 },  // ARRIBA
+        { 0, -1, 0 }, // ABAJO
+        { 0, 0, 1 },  // FRENTE
+        { 0, 0, -1 }, // ATRÁS
+        { -1, 0, 0 }, // IZQUIERDA
+        { 1, 0, 0 }   // DERECHA
     };
     
-    // Light intensity for each face (simulated directional lighting)
+    // Intensidad de luz para cada cara (iluminación direccional simulada)
     private static final float[] FACE_LIGHT = {
-        1.0f,  // UP (bright)
-        0.4f,  // DOWN (dark)
-        0.8f,  // FRONT
-        0.8f,  // BACK
-        0.6f,  // LEFT
-        0.6f   // RIGHT
+        1.0f,  // ARRIBA (brillante)
+        0.4f,  // ABAJO (oscuro)
+        0.8f,  // FRENTE
+        0.8f,  // ATRÁS
+        0.6f,  // IZQUIERDA
+        0.6f   // DERECHA
     };
     
-    // Size of texture atlas grid (e.g., 16x16 textures in atlas)
+    // Tamaño de la cuadrícula del atlas de texturas (por ejemplo, 16x16 texturas en el atlas)
     private static final float TEXTURE_ATLAS_SIZE = 16.0f;
     
-    // Block registry reference
+    // Referencia al registro de bloques
     private final BlockRegistry blockRegistry;
     
     public ChunkMeshBuilder() {
@@ -106,10 +106,10 @@ public class ChunkMeshBuilder {
     }
     
     /**
-     * Builds mesh data from chunk data (seguro para hilos secundarios)
+     * Construye datos de malla a partir de datos de chunk (seguro para hilos secundarios)
      * 
-     * @param chunk El chunk para el que construir datos de mesh
-     * @return Los datos del mesh construido (sin objetos OpenGL)
+     * @param chunk El chunk para el que construir datos de malla
+     * @return Los datos de la malla construida (sin objetos OpenGL)
      */
     public ChunkMeshData buildMeshData(Chunk chunk) {
         List<Float> positions = new ArrayList<>();
@@ -119,13 +119,13 @@ public class ChunkMeshBuilder {
         
         int indexCount = 0;
         
-        // Iterate through all blocks in the chunk
+        // Iterar a través de todos los bloques en el chunk
         for (int x = 0; x < Chunk.WIDTH; x++) {
             for (int y = 0; y < Chunk.HEIGHT; y++) {
                 for (int z = 0; z < Chunk.DEPTH; z++) {
                     Block block = chunk.getBlock(x, y, z);
                     
-                    // Skip air blocks
+                    // Saltar bloques de aire
                     if (block.getId() == BlockRegistry.AIR_ID) {
                         continue;
                     }
@@ -158,7 +158,7 @@ public class ChunkMeshBuilder {
             indexArray[i] = indices.get(i);
         }
         
-        // Crear y retornar los datos del mesh (sin objetos OpenGL)
+        // Crear y retornar los datos de la malla (sin objetos OpenGL)
         return new ChunkMeshData(
             positionArray,
             normalArray,

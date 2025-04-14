@@ -12,76 +12,76 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL30.*;
 
 /**
- * Represents an OpenGL texture that can be used for rendering
+ * Representa una textura OpenGL que puede ser usada para renderizado
  */
 public class Texture {
-    // OpenGL texture ID
+    // ID de textura OpenGL
     private final int id;
     
-    // Texture dimensions
+    // Dimensiones de la textura
     private final int width;
     private final int height;
     
     /**
-     * Creates a texture from raw pixel data
+     * Crea una textura a partir de datos de píxeles sin procesar
      * 
-     * @param width Texture width in pixels
-     * @param height Texture height in pixels
-     * @param buffer Byte buffer containing pixel data (RGBA format)
-     * @throws Exception If texture creation fails
+     * @param width Ancho de la textura en píxeles
+     * @param height Alto de la textura en píxeles
+     * @param buffer Buffer de bytes que contiene los datos de píxeles (formato RGBA)
+     * @throws Exception Si la creación de la textura falla
      */
     public Texture(int width, int height, ByteBuffer buffer) throws Exception {
         this.width = width;
         this.height = height;
         
-        // Create a new OpenGL texture
+        // Crear una nueva textura OpenGL
         id = glGenTextures();
         
-        // Bind the texture
+        // Vincular la textura
         glBindTexture(GL_TEXTURE_2D, id);
         
-        // Set texture parameters
+        // Establecer parámetros de textura
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         
-        // Upload the texture data
+        // Subir los datos de la textura
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
         
-        // Generate mipmaps
+        // Generar mipmaps
         glGenerateMipmap(GL_TEXTURE_2D);
         
-        // Unbind the texture
+        // Desvincular la textura
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     
     /**
-     * Loads a texture from a resource
+     * Carga una textura desde un recurso
      * 
-     * @param resourcePath Path to the texture resource
-     * @return Texture object
-     * @throws Exception If loading fails
+     * @param resourcePath Ruta al recurso de la textura
+     * @return Objeto Texture
+     * @throws Exception Si la carga falla
      */
     public static Texture loadTexture(String resourcePath) throws Exception {
-        // If resource loading fails, use a default texture
+        // Si la carga del recurso falla, usar una textura por defecto
         BufferedImage image;
         try (InputStream in = Texture.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (in == null) {
-                // Resource not found, create default pattern
+                // Recurso no encontrado, crear patrón por defecto
                 return createDefaultTexture();
             }
             image = ImageIO.read(in);
         } catch (Exception e) {
-            // Loading failed, create default pattern
+            // La carga falló, crear patrón por defecto
             return createDefaultTexture();
         }
         
-        // Get image dimensions
+        // Obtener dimensiones de la imagen
         int width = image.getWidth();
         int height = image.getHeight();
         
-        // Convert the image to an RGBA byte buffer
+        // Convertir la imagen a un buffer de bytes RGBA
         int[] pixels = new int[width * height];
         image.getRGB(0, 0, width, height, pixels, 0, width);
         
@@ -89,31 +89,31 @@ public class Texture {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 int pixel = pixels[y * width + x];
-                buffer.put((byte) ((pixel >> 16) & 0xFF)); // Red
-                buffer.put((byte) ((pixel >> 8) & 0xFF));  // Green
-                buffer.put((byte) (pixel & 0xFF));         // Blue
-                buffer.put((byte) ((pixel >> 24) & 0xFF)); // Alpha
+                buffer.put((byte) ((pixel >> 16) & 0xFF)); // Rojo
+                buffer.put((byte) ((pixel >> 8) & 0xFF));  // Verde
+                buffer.put((byte) (pixel & 0xFF));         // Azul
+                buffer.put((byte) ((pixel >> 24) & 0xFF)); // Alfa
             }
         }
         buffer.flip();
         
-        // Create the texture
+        // Crear la textura
         Texture texture = new Texture(width, height, buffer);
         
-        // Free the buffer memory
+        // Liberar la memoria del buffer
         MemoryUtil.memFree(buffer);
         
         return texture;
     }
     
     /**
-     * Creates a default checkerboard texture when loading fails
+     * Crea una textura de tablero de ajedrez por defecto cuando la carga falla
      * 
-     * @return Default texture
-     * @throws Exception If creation fails
+     * @return Textura por defecto
+     * @throws Exception Si la creación falla
      */
     private static Texture createDefaultTexture() throws Exception {
-        // Create simple texture atlas with colored squares
+        // Crear un atlas de texturas simple con cuadrados de colores
         int width = 256;
         int height = 256;
         int tileSize = 16; // 16x16 tiles
@@ -121,62 +121,62 @@ public class Texture {
         ByteBuffer buffer = MemoryUtil.memAlloc(width * height * 4);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                // Calculate tile coordinates
+                // Calcular coordenadas del tile
                 int tileX = x / tileSize;
                 int tileY = y / tileSize;
                 int tileIndex = tileY * (width / tileSize) + tileX;
                 
-                // Get color based on tile index
+                // Obtener color basado en el índice del tile
                 byte r, g, b;
                 switch (tileIndex % 16) {
-                    case 0: // Air (transparent)
+                    case 0: // Aire (transparente)
                         r = g = b = (byte) 0;
                         buffer.put(r).put(g).put(b).put((byte) 0);
                         break;
-                    case 1: // Stone (gray)
+                    case 1: // Piedra (gris)
                         r = g = b = (byte) 128;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 2: // Dirt (brown)
+                    case 2: // Tierra (marrón)
                         r = (byte) 150; g = (byte) 100; b = (byte) 50;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 3: // Grass side (brown/green)
+                    case 3: // Lado de hierba (marrón/verde)
                         r = (byte) 150; g = (byte) 100; b = (byte) 50;
                         if (y % tileSize < tileSize / 4) {
                             g = (byte) 180;
                         }
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 4: // Grass top (green)
+                    case 4: // Parte superior de hierba (verde)
                         r = (byte) 100; g = (byte) 180; b = (byte) 50;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 5: // Sand (yellow)
+                    case 5: // Arena (amarillo)
                         r = (byte) 220; g = (byte) 200; b = (byte) 100;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 6: // Water (blue, semi-transparent)
+                    case 6: // Agua (azul, semi-transparente)
                         r = (byte) 50; g = (byte) 100; b = (byte) 200;
                         buffer.put(r).put(g).put(b).put((byte) 180);
                         break;
-                    case 7: // Bedrock (dark gray)
+                    case 7: // Roca madre (gris oscuro)
                         r = g = b = (byte) 50;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 8: // Wood side (brown)
+                    case 8: // Lado de madera (marrón)
                         r = (byte) 150; g = (byte) 100; b = (byte) 50;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 9: // Wood end (light brown)
+                    case 9: // Extremo de madera (marrón claro)
                         r = (byte) 170; g = (byte) 120; b = (byte) 70;
                         buffer.put(r).put(g).put(b).put((byte) 255);
                         break;
-                    case 10: // Leaves (green, semi-transparent)
+                    case 10: // Hojas (verde, semi-transparente)
                         r = (byte) 50; g = (byte) 150; b = (byte) 50;
                         buffer.put(r).put(g).put(b).put((byte) 200);
                         break;
-                    default: // Checkerboard pattern for remaining tiles
+                    default: // Patrón de tablero de ajedrez para los tiles restantes
                         boolean isWhite = ((x / (tileSize/4)) + (y / (tileSize/4))) % 2 == 0;
                         if (isWhite) {
                             r = g = b = (byte) 200;
@@ -190,52 +190,52 @@ public class Texture {
         }
         buffer.flip();
         
-        // Create the texture
+        // Crear la textura
         Texture texture = new Texture(width, height, buffer);
         
-        // Free the buffer memory
+        // Liberar la memoria del buffer
         MemoryUtil.memFree(buffer);
         
         return texture;
     }
     
     /**
-     * Gets the OpenGL texture ID
+     * Obtiene el ID de la textura OpenGL
      */
     public int getId() {
         return id;
     }
     
     /**
-     * Gets the texture width
+     * Obtiene el ancho de la textura
      */
     public int getWidth() {
         return width;
     }
     
     /**
-     * Gets the texture height
+     * Obtiene el alto de la textura
      */
     public int getHeight() {
         return height;
     }
     
     /**
-     * Binds the texture to the current OpenGL context
+     * Vincula la textura al contexto OpenGL actual
      */
     public void bind() {
         glBindTexture(GL_TEXTURE_2D, id);
     }
     
     /**
-     * Unbinds the texture from the current OpenGL context
+     * Desvincula la textura del contexto OpenGL actual
      */
     public void unbind() {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     
     /**
-     * Cleans up the texture
+     * Limpia la textura
      */
     public void cleanup() {
         glDeleteTextures(id);

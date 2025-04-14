@@ -263,7 +263,7 @@ public class Player {
     public void placeBlock() {
         // Lanzar un rayo para encontrar la cara contra la que colocar
         BlockRayResult result = castRay(true);
-        if (result != null && (result.faceX != 0 || result.faceY != 0 || result.faceZ != 0)) {
+        if (result != null && result.faceX != 0 || result.faceY != 0 || result.faceZ != 0) {
             // Calcular posición para colocar el nuevo bloque
             int placeX = result.x + result.faceX;
             int placeY = result.y + result.faceY;

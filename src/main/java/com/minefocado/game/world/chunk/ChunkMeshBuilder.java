@@ -3,6 +3,7 @@ package main.java.com.minefocado.game.world.chunk;
 import java.util.ArrayList;
 import java.util.List;
 
+import main.java.com.minefocado.game.world.World;
 import main.java.com.minefocado.game.world.blocks.Block;
 import main.java.com.minefocado.game.world.blocks.BlockRegistry;
 
@@ -10,99 +11,10 @@ import main.java.com.minefocado.game.world.blocks.BlockRegistry;
  * Builds a chunk mesh from block data
  */
 public class ChunkMeshBuilder {
-    // Direction vectors for the 6 faces of a cube
-    // Order: UP, DOWN, FRONT, BACK, LEFT, RIGHT
-    private static final int[][] FACE_DIRECTIONS = {
-        { 0, 1, 0 },  // UP
-        { 0, -1, 0 }, // DOWN
-        { 0, 0, 1 },  // FRONT
-        { 0, 0, -1 }, // BACK
-        { -1, 0, 0 }, // LEFT
-        { 1, 0, 0 }   // RIGHT
-    };
-    
-    // Vertices for each face (4 vertices per face, 3 coords per vertex)
-    private static final float[][][] FACE_VERTICES = {
-        // UP face (y = 1)
-        {
-            { 0, 1, 0 },
-            { 1, 1, 0 },
-            { 1, 1, 1 },
-            { 0, 1, 1 }
-        },
-        // DOWN face (y = 0)
-        {
-            { 0, 0, 1 },
-            { 1, 0, 1 },
-            { 1, 0, 0 },
-            { 0, 0, 0 }
-        },
-        // FRONT face (z = 1)
-        {
-            { 0, 0, 1 },
-            { 0, 1, 1 },
-            { 1, 1, 1 },
-            { 1, 0, 1 }
-        },
-        // BACK face (z = 0)
-        {
-            { 1, 0, 0 },
-            { 1, 1, 0 },
-            { 0, 1, 0 },
-            { 0, 0, 0 }
-        },
-        // LEFT face (x = 0)
-        {
-            { 0, 0, 0 },
-            { 0, 1, 0 },
-            { 0, 1, 1 },
-            { 0, 0, 1 }
-        },
-        // RIGHT face (x = 1)
-        {
-            { 1, 0, 1 },
-            { 1, 1, 1 },
-            { 1, 1, 0 },
-            { 1, 0, 0 }
-        }
-    };
-    
-    // Texture coordinates for each face vertex
-    private static final float[][] TEX_COORDS = {
-        { 0, 0 },
-        { 1, 0 },
-        { 1, 1 },
-        { 0, 1 }
-    };
-    
-    // Normal vectors for each face
-    private static final float[][] NORMALS = {
-        { 0, 1, 0 },  // UP
-        { 0, -1, 0 }, // DOWN
-        { 0, 0, 1 },  // FRONT
-        { 0, 0, -1 }, // BACK
-        { -1, 0, 0 }, // LEFT
-        { 1, 0, 0 }   // RIGHT
-    };
-    
-    // Light intensity for each face (simulated directional lighting)
-    private static final float[] FACE_LIGHT = {
-        1.0f,  // UP (bright)
-        0.4f,  // DOWN (dark)
-        0.8f,  // FRONT
-        0.8f,  // BACK
-        0.6f,  // LEFT
-        0.6f   // RIGHT
-    };
-    
     // Size of texture atlas grid (e.g., 16x16 textures in atlas)
     private static final float TEXTURE_ATLAS_SIZE = 16.0f;
     
-    // Block registry reference
-    private final BlockRegistry blockRegistry;
-    
     public ChunkMeshBuilder() {
-        blockRegistry = BlockRegistry.getInstance();
     }
     
     /**
@@ -112,12 +24,21 @@ public class ChunkMeshBuilder {
      * @return Los datos del mesh construido (sin objetos OpenGL)
      */
     public ChunkMeshData buildMeshData(Chunk chunk) {
+        // Check if chunk is null
+        if (chunk == null) {
+            System.err.println("Warning: Attempted to build mesh for null chunk");
+            return new ChunkMeshData(
+                new float[0],
+                new float[0],
+                new float[0],
+                new int[0]
+            );
+        }
+        
         List<Float> positions = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
-        
-        int indexCount = 0;
         
         // Iterate through all blocks in the chunk
         for (int x = 0; x < Chunk.WIDTH; x++) {
@@ -125,13 +46,16 @@ public class ChunkMeshBuilder {
                 for (int z = 0; z < Chunk.DEPTH; z++) {
                     Block block = chunk.getBlock(x, y, z);
                     
-                    // Skip air blocks
-                    if (block.getId() == BlockRegistry.AIR_ID) {
+                    // Skip null blocks or air blocks
+                    if (block == null || block.getId() == BlockRegistry.AIR_ID) {
                         continue;
                     }
                     
                     // Añadir todas las caras visibles del bloque a la malla
-                    addBlock(chunk, x, y, z, positions, indices, texCoords, normals, block);
+                    addBlock(chunk, block, x, y, z, positions, indices, texCoords, normals, null);
+                    
+                    // Continue to iterate to next block
+                    continue;
                 }
             }
         }
@@ -180,6 +104,12 @@ public class ChunkMeshBuilder {
      * @return true si la cara debe ser visible (bloque adyacente es transparente o no existe)
      */
     private boolean shouldRenderFace(Chunk chunk, int blockX, int blockY, int blockZ, int faceX, int faceY, int faceZ) {
+        // Safety check - if chunk is null, always render face
+        if (chunk == null) {
+            System.err.println("Warning: Null chunk in shouldRenderFace");
+            return true;
+        }
+        
         // Calcular coordenadas del bloque adyacente
         int adjacentX = blockX + faceX;
         int adjacentY = blockY + faceY;
@@ -210,174 +140,279 @@ public class ChunkMeshBuilder {
         } catch (Exception e) {
             // Si algo sale mal (por ejemplo, el chunk adyacente no está cargado), 
             // renderizar la cara para evitar agujeros
+            System.err.println("Error checking adjacent block: " + e.getMessage());
             return true;
         }
     }
     
     /**
-     * Añade una cara de cubo con los vértices dados
+     * Añade una cara a la malla
      * 
-     * @param vertices Lista de vértices a llenar
-     * @param indices Lista de índices a llenar
-     * @param textureCoords Lista de coordenadas de textura a llenar
-     * @param normals Lista de normales a llenar
-     * @param x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4 Coordenadas de los cuatro vértices de la cara
-     * @param nx,ny,nz Componentes del vector normal
-     * @param textureX,textureY Coordenada de textura en el atlas para esta cara de bloque
+     * @param vertices Lista de vértices
+     * @param indices Lista de índices
+     * @param textureCoords Lista de coordenadas UV
+     * @param normals Lista de normales
+     * @param v1x Vertice 1 - X
+     * @param v1y Vertice 1 - Y
+     * @param v1z Vertice 1 - Z
+     * @param v2x Vertice 2 - X
+     * @param v2y Vertice 2 - Y
+     * @param v2z Vertice 2 - Z
+     * @param v3x Vertice 3 - X
+     * @param v3y Vertice 3 - Y
+     * @param v3z Vertice 3 - Z
+     * @param v4x Vertice 4 - X
+     * @param v4y Vertice 4 - Y
+     * @param v4z Vertice 4 - Z
+     * @param nx Normal - X
+     * @param ny Normal - Y
+     * @param nz Normal - Z
+     * @param textureIndex Índice de textura
+     * @param textureVariant Variante de textura
      */
-    private void addFace(List<Float> vertices, List<Integer> indices, List<Float> textureCoords, List<Float> normals,
-                        float x1, float y1, float z1,
-                        float x2, float y2, float z2,
-                        float x3, float y3, float z3,
-                        float x4, float y4, float z4,
-                        float nx, float ny, float nz,
-                        float textureX, float textureY) {
+    private void addFace(List<Float> vertices, List<Integer> indices, 
+                       List<Float> textureCoords, List<Float> normals,
+                       float v1x, float v1y, float v1z,
+                       float v2x, float v2y, float v2z,
+                       float v3x, float v3y, float v3z,
+                       float v4x, float v4y, float v4z,
+                       float nx, float ny, float nz,
+                       int textureIndex, int textureVariant) {
         
-        // Índice base para esta cara
-        int baseIndex = vertices.size() / 3;
+        // Validate collections to prevent NPEs
+        if (vertices == null || indices == null || textureCoords == null || normals == null) {
+            System.err.println("Warning: Null collection in addFace method");
+            return;
+        }
         
-        // Añadir vértices
-        vertices.add(x1); vertices.add(y1); vertices.add(z1);
-        vertices.add(x2); vertices.add(y2); vertices.add(z2);
-        vertices.add(x3); vertices.add(y3); vertices.add(z3);
-        vertices.add(x4); vertices.add(y4); vertices.add(z4);
-        
-        // Añadir índices (dos triángulos por cara)
-        indices.add(baseIndex);
-        indices.add(baseIndex + 1);
-        indices.add(baseIndex + 2);
-        
-        indices.add(baseIndex);
-        indices.add(baseIndex + 2);
-        indices.add(baseIndex + 3);
-        
-        // Calcular coordenadas de textura
-        float textureSize = 1.0f / 16.0f; // 16 texturas en el atlas
-        float texLeft = textureX * textureSize;
-        float texRight = texLeft + textureSize;
-        float texTop = textureY * textureSize;
-        float texBottom = texTop + textureSize;
-        
-        // Añadir coordenadas de textura para los 4 vértices
-        textureCoords.add(texLeft);  textureCoords.add(texBottom); // BL
-        textureCoords.add(texRight); textureCoords.add(texBottom); // BR
-        textureCoords.add(texRight); textureCoords.add(texTop);    // TR
-        textureCoords.add(texLeft);  textureCoords.add(texTop);    // TL
-        
-        // Añadir normales para cada vértice
-        for (int i = 0; i < 4; i++) {
-            normals.add(nx);
-            normals.add(ny);
-            normals.add(nz);
+        try {
+            // Índice inicial
+            int startIndex = vertices.size() / 3;
+            
+            // Añadir los vértices
+            vertices.add(v1x);
+            vertices.add(v1y);
+            vertices.add(v1z);
+            
+            vertices.add(v2x);
+            vertices.add(v2y);
+            vertices.add(v2z);
+            
+            vertices.add(v3x);
+            vertices.add(v3y);
+            vertices.add(v3z);
+            
+            vertices.add(v4x);
+            vertices.add(v4y);
+            vertices.add(v4z);
+            
+            // Añadir los índices para los dos triángulos que forman la cara
+            indices.add(startIndex);
+            indices.add(startIndex + 1);
+            indices.add(startIndex + 2);
+            
+            indices.add(startIndex);
+            indices.add(startIndex + 2);
+            indices.add(startIndex + 3);
+            
+            // Añadir las coordenadas de textura para cada vértice
+            addTextureCoordinates(textureCoords, textureIndex, textureVariant);
+            
+            // Añadir las normales para cada vértice
+            for (int i = 0; i < 4; i++) {
+                normals.add(nx);
+                normals.add(ny);
+                normals.add(nz);
+            }
+        } catch (Exception e) {
+            System.err.println("Error in addFace method: " + e.getMessage());
         }
     }
     
     /**
-     * Añade todas las caras visibles de un bloque a la malla
+     * Añade un bloque a la malla si es visible
      * 
      * @param chunk El chunk actual
-     * @param blockX Coordenada X del bloque
-     * @param blockY Coordenada Y del bloque
-     * @param blockZ Coordenada Z del bloque
-     * @param vertices Lista de vértices a llenar
-     * @param indices Lista de índices a llenar
-     * @param textureCoords Lista de coordenadas de textura a llenar
-     * @param normals Lista de normales a llenar
-     * @param block El bloque a renderizar
+     * @param block El bloque a añadir
+     * @param x Posición X relativa al chunk
+     * @param y Posición Y relativa al chunk
+     * @param z Posición Z relativa al chunk
+     * @param vertices Lista de vértices
+     * @param indices Lista de índices
+     * @param textureCoords Lista de coordenadas UV
+     * @param normals Lista de normales
+     * @param world El mundo para comprobar bloques adyacentes
      */
-    private void addBlock(Chunk chunk, int blockX, int blockY, int blockZ, 
-                     List<Float> vertices, List<Integer> indices, 
-                     List<Float> textureCoords, List<Float> normals,
-                     Block block) {
+    private void addBlock(Chunk chunk, Block block, int x, int y, int z,
+                        List<Float> vertices, List<Integer> indices, 
+                        List<Float> textureCoords, List<Float> normals, World world) {
         
-        // Posición del bloque en el espacio del mundo
-        float worldX = blockX;
-        float worldY = blockY;
-        float worldZ = blockZ;
-        
-        // Tamaño del bloque
-        float size = 0.5f;
-        
-        // Cada cara del cubo tiene coordenadas diferentes para su textura
-        float topTexX = block.getTopTextureX();
-        float topTexY = block.getTopTextureY();
-        float sideTexX = block.getSideTextureX();
-        float sideTexY = block.getSideTextureY();
-        float bottomTexX = block.getBottomTextureX();
-        float bottomTexY = block.getBottomTextureY();
-        
-        // Añadir caras visibles (comprobando oclusión de cada cara)
-        
-        // Cara superior (+Y)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 1, 0)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX - size, worldY + size, worldZ - size,  // x1,y1,z1
-                worldX - size, worldY + size, worldZ + size,  // x2,y2,z2
-                worldX + size, worldY + size, worldZ + size,  // x3,y3,z3
-                worldX + size, worldY + size, worldZ - size,  // x4,y4,z4
-                0.0f, 1.0f, 0.0f,                             // nx,ny,nz (normal)
-                topTexX, topTexY                              // textureX,textureY
-            );
+        // Validate essential inputs to prevent NPEs
+        if (chunk == null || block == null) {
+            System.err.println("Warning: Null chunk or block in addBlock method");
+            return;
         }
         
-        // Cara inferior (-Y)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, -1, 0)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX - size, worldY - size, worldZ + size,  // x1,y1,z1
-                worldX - size, worldY - size, worldZ - size,  // x2,y2,z2
-                worldX + size, worldY - size, worldZ - size,  // x3,y3,z3
-                worldX + size, worldY - size, worldZ + size,  // x4,y4,z4
-                0.0f, -1.0f, 0.0f,                            // nx,ny,nz (normal)
-                bottomTexX, bottomTexY                        // textureX,textureY
-            );
+        if (vertices == null || indices == null || textureCoords == null || normals == null) {
+            System.err.println("Warning: Null collection in addBlock method");
+            return;
         }
         
-        // Cara frontal (+Z)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 0, 1)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX - size, worldY - size, worldZ + size,  // x1,y1,z1
-                worldX + size, worldY - size, worldZ + size,  // x2,y2,z2
-                worldX + size, worldY + size, worldZ + size,  // x3,y3,z3
-                worldX - size, worldY + size, worldZ + size,  // x4,y4,z4
-                0.0f, 0.0f, 1.0f,                             // nx,ny,nz (normal)
-                sideTexX, sideTexY                            // textureX,textureY
-            );
+        try {
+            // Removed unused worldX and worldZ variables
+            
+            // Comprobar cada cara del bloque
+            // Solo renderizar las caras que están expuestas al aire o a bloques transparentes
+            
+            // Cara superior (Y+)
+            if (shouldRenderFace(chunk, x, y, z, 0, 1, 0)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x, y + 1, z,
+                        x + 1, y + 1, z,
+                        x + 1, y + 1, z + 1,
+                        x, y + 1, z + 1,
+                        0, 1, 0,
+                        block.getTextureIndex(Block.FACE_UP), 0);
+            }
+            
+            // Cara inferior (Y-)
+            if (shouldRenderFace(chunk, x, y, z, 0, -1, 0)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x, y, z + 1,
+                        x + 1, y, z + 1,
+                        x + 1, y, z,
+                        x, y, z,
+                        0, -1, 0,
+                        block.getTextureIndex(Block.FACE_DOWN), 0);
+            }
+            
+            // Cara frontal (Z+)
+            if (shouldRenderFace(chunk, x, y, z, 0, 0, 1)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x, y, z + 1,
+                        x, y + 1, z + 1,
+                        x + 1, y + 1, z + 1,
+                        x + 1, y, z + 1,
+                        0, 0, 1,
+                        block.getTextureIndex(Block.FACE_FRONT), 0);
+            }
+            
+            // Cara trasera (Z-)
+            if (shouldRenderFace(chunk, x, y, z, 0, 0, -1)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x + 1, y, z,
+                        x + 1, y + 1, z,
+                        x, y + 1, z,
+                        x, y, z,
+                        0, 0, -1,
+                        block.getTextureIndex(Block.FACE_BACK), 0);
+            }
+            
+            // Cara derecha (X+)
+            if (shouldRenderFace(chunk, x, y, z, 1, 0, 0)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x + 1, y, z + 1,
+                        x + 1, y + 1, z + 1,
+                        x + 1, y + 1, z,
+                        x + 1, y, z,
+                        1, 0, 0,
+                        block.getTextureIndex(Block.FACE_RIGHT), 0);
+            }
+            
+            // Cara izquierda (X-)
+            if (shouldRenderFace(chunk, x, y, z, -1, 0, 0)) {
+                addFace(vertices, indices, textureCoords, normals,
+                        x, y, z,
+                        x, y + 1, z,
+                        x, y + 1, z + 1,
+                        x, y, z + 1,
+                        -1, 0, 0,
+                        block.getTextureIndex(Block.FACE_LEFT), 0);
+            }
+        } catch (Exception e) {
+            System.err.println("Error in addBlock method: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Añade coordenadas de textura para una cara completa
+     * 
+     * @param textureCoords Lista de coordenadas de textura
+     * @param textureIndex Índice de la textura en el atlas
+     * @param textureVariant Variante de la textura (rotación)
+     */
+    private void addTextureCoordinates(List<Float> textureCoords, int textureIndex, int textureVariant) {
+        if (textureCoords == null) {
+            System.err.println("Warning: Null textureCoords in addTextureCoordinates");
+            return;
         }
         
-        // Cara trasera (-Z)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 0, 0, -1)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX + size, worldY - size, worldZ - size,  // x1,y1,z1
-                worldX - size, worldY - size, worldZ - size,  // x2,y2,z2
-                worldX - size, worldY + size, worldZ - size,  // x3,y3,z3
-                worldX + size, worldY + size, worldZ - size,  // x4,y4,z4
-                0.0f, 0.0f, -1.0f,                            // nx,ny,nz (normal)
-                sideTexX, sideTexY                            // textureX,textureY
-            );
-        }
-        
-        // Cara derecha (+X)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, 1, 0, 0)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX + size, worldY - size, worldZ + size,  // x1,y1,z1
-                worldX + size, worldY - size, worldZ - size,  // x2,y2,z2
-                worldX + size, worldY + size, worldZ - size,  // x3,y3,z3
-                worldX + size, worldY + size, worldZ + size,  // x4,y4,z4
-                1.0f, 0.0f, 0.0f,                             // nx,ny,nz (normal)
-                sideTexX, sideTexY                            // textureX,textureY
-            );
-        }
-        
-        // Cara izquierda (-X)
-        if (shouldRenderFace(chunk, blockX, blockY, blockZ, -1, 0, 0)) {
-            addFace(vertices, indices, textureCoords, normals,
-                worldX - size, worldY - size, worldZ - size,  // x1,y1,z1
-                worldX - size, worldY - size, worldZ + size,  // x2,y2,z2
-                worldX - size, worldY + size, worldZ + size,  // x3,y3,z3
-                worldX - size, worldY + size, worldZ - size,  // x4,y4,z4
-                -1.0f, 0.0f, 0.0f,                            // nx,ny,nz (normal)
-                sideTexX, sideTexY                            // textureX,textureY
-            );
+        try {
+            // Calculate texture atlas coordinates
+            float textureSize = 1.0f / TEXTURE_ATLAS_SIZE;
+            float textureU = (textureIndex % TEXTURE_ATLAS_SIZE) * textureSize;
+            float textureV = (textureIndex / TEXTURE_ATLAS_SIZE) * textureSize;
+            
+            // Add the four corners of texture (can be rotated based on variant)
+            switch (textureVariant % 4) {
+                case 0: // No rotation
+                    textureCoords.add(textureU);                   // U0
+                    textureCoords.add(textureV + textureSize);     // V0
+                    
+                    textureCoords.add(textureU + textureSize);     // U1
+                    textureCoords.add(textureV + textureSize);     // V1
+                    
+                    textureCoords.add(textureU + textureSize);     // U2
+                    textureCoords.add(textureV);                   // V2
+                    
+                    textureCoords.add(textureU);                   // U3
+                    textureCoords.add(textureV);                   // V3
+                    break;
+                    
+                case 1: // 90 degrees rotation
+                    textureCoords.add(textureU);                   // U3
+                    textureCoords.add(textureV);                   // V3
+                    
+                    textureCoords.add(textureU);                   // U0
+                    textureCoords.add(textureV + textureSize);     // V0
+                    
+                    textureCoords.add(textureU + textureSize);     // U1
+                    textureCoords.add(textureV + textureSize);     // V1
+                    
+                    textureCoords.add(textureU + textureSize);     // U2
+                    textureCoords.add(textureV);                   // V2
+                    break;
+                    
+                case 2: // 180 degrees rotation
+                    textureCoords.add(textureU + textureSize);     // U2
+                    textureCoords.add(textureV);                   // V2
+                    
+                    textureCoords.add(textureU);                   // U3
+                    textureCoords.add(textureV);                   // V3
+                    
+                    textureCoords.add(textureU);                   // U0
+                    textureCoords.add(textureV + textureSize);     // V0
+                    
+                    textureCoords.add(textureU + textureSize);     // U1
+                    textureCoords.add(textureV + textureSize);     // V1
+                    break;
+                    
+                case 3: // 270 degrees rotation
+                    textureCoords.add(textureU + textureSize);     // U1
+                    textureCoords.add(textureV + textureSize);     // V1
+                    
+                    textureCoords.add(textureU + textureSize);     // U2
+                    textureCoords.add(textureV);                   // V2
+                    
+                    textureCoords.add(textureU);                   // U3
+                    textureCoords.add(textureV);                   // V3
+                    
+                    textureCoords.add(textureU);                   // U0
+                    textureCoords.add(textureV + textureSize);     // V0
+                    break;
+            }
+        } catch (Exception e) {
+            System.err.println("Error in addTextureCoordinates: " + e.getMessage());
         }
     }
 }

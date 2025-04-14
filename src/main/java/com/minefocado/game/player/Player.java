@@ -222,6 +222,11 @@ public class Player {
      * @return true si se detecta colisión, false en caso contrario
      */
     private boolean checkCollision() {
+        // Check if world is null
+        if (world == null) {
+            return false;
+        }
+        
         // Obtener posiciones de bloques que se superponen con la caja de colisión del jugador
         int minX = (int) Math.floor(position.x - WIDTH / 2);
         int maxX = (int) Math.floor(position.x + WIDTH / 2);
@@ -273,7 +278,8 @@ public class Player {
             int blockId = hotbar[selectedHotbarSlot];
             
             // No colocar si la ranura seleccionada está vacía o el lugar está ocupado
-            if (blockId != 0 && world.getBlockAt(placeX, placeY, placeZ).getId() == BlockRegistry.AIR_ID) {
+            Block blockAtPlace = world.getBlockAt(placeX, placeY, placeZ);
+            if (blockId != 0 && blockAtPlace != null && blockAtPlace.getId() == BlockRegistry.AIR_ID) {
                 // Comprobar colisión con jugador primero
                 float px = position.x;
                 float py = position.y;
@@ -306,8 +312,17 @@ public class Player {
      * @return Información sobre el bloque golpeado, o null si no se golpeó ninguno
      */
     private BlockRayResult castRay(boolean includeOutsideInfo) {
+        // Check if camera or world is null
+        if (camera == null || world == null) {
+            return null;
+        }
+        
         // Obtener origen del rayo (posición de la cámara) y dirección (vector frontal de la cámara)
         Vector3f origin = camera.getPosition();
+        if (origin == null) {
+            return null;
+        }
+        
         Vector3f direction = new Vector3f();
         
         // Calcular vector de dirección a partir de los ángulos de la cámara

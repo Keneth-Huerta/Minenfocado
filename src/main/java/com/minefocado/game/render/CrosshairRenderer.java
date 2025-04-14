@@ -71,7 +71,10 @@ public class CrosshairRenderer {
             glBindBuffer(GL_ARRAY_BUFFER, vboId);
             glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
             
+            // Configurar atributos de vértice
             glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+            // Habilitar el arreglo de atributos de vértice
+            glEnableVertexAttribArray(0);
             
             // Desenlazar
             glBindBuffer(GL_ARRAY_BUFFER, 0);

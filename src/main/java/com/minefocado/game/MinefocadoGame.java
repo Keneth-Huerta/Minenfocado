@@ -67,6 +67,8 @@ public class MinefocadoGame {
     // Estado del juego
     private World world;
     private Player player;
+    private boolean running = true; // Added to track if game is running
+    private boolean showDebugInfo = false; // Added to support debug toggle
     
     // Manejo de entrada
     private boolean[] keyPressed = new boolean[GLFW_KEY_LAST + 1];
@@ -262,7 +264,7 @@ public class MinefocadoGame {
             if (deltaTime > 0.1f) deltaTime = 0.1f;
             
             // Procesar entrada
-            processInput();
+            processInput(deltaTime);
             
             // Actualizar estado del juego
             update();
@@ -275,6 +277,9 @@ public class MinefocadoGame {
             
             // Poll for window events
             glfwPollEvents();
+            
+            // Update input state at the end of each frame
+            updateInputState();
         }
     }
     
@@ -295,6 +300,11 @@ public class MinefocadoGame {
     }
     
     private void update() {
+        // Skip if player or world not yet initialized
+        if (player == null || world == null) {
+            return;
+        }
+        
         // Actualizar jugador (física, colisiones, etc.)
         player.update(deltaTime);
         
@@ -308,6 +318,13 @@ public class MinefocadoGame {
         // Limpiar el framebuffer
         glClearColor(0.529f, 0.808f, 0.922f, 0.0f); // Color azul cielo
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        // Skip rendering if player or world not yet initialized
+        if (player == null || world == null) {
+            // Just update the display with the clear color
+            glfwSwapBuffers(window);
+            return;
+        }
         
         // Obtener matrices de cámara para renderizado
         Matrix4f projectionMatrix = player.getCamera().getProjectionMatrix();
@@ -328,17 +345,37 @@ public class MinefocadoGame {
         glfwSwapBuffers(window);
     }
     
-    private void processInput() {
-        // Procesar entrada de movimiento
-        boolean forward = keyPressed[GLFW_KEY_W];
-        boolean backward = keyPressed[GLFW_KEY_S];
-        // Intercambiar las teclas A y D para corregir el movimiento lateral
-        boolean left = keyPressed[GLFW_KEY_D];  // Antes era A
-        boolean right = keyPressed[GLFW_KEY_A]; // Antes era D
-        boolean jump = keyPressed[GLFW_KEY_SPACE];
-        boolean crouch = keyPressed[GLFW_KEY_LEFT_SHIFT];
+    private void processInput(float deltaTime) {
+        // Skip processing input if world or player not yet initialized
+        if (world == null || player == null) {
+            return;
+        }
         
-        player.handleMovement(forward, backward, left, right, jump, crouch, deltaTime);
+        // Process window close request
+        if (glfwWindowShouldClose(window)) {
+            running = false;
+            return;
+        }
+        
+        // Toggle mouse grab with Escape key
+        if (isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+            toggleMouseGrab();
+        }
+        
+        // Toggle debug info with F3
+        if (isKeyJustPressed(GLFW_KEY_F3)) {
+            showDebugInfo = !showDebugInfo;
+        }
+        
+        // Handle movement keys (W, A, S, D, Space, Left Shift)
+        boolean forward = isKeyPressed(GLFW_KEY_W);
+        boolean backward = isKeyPressed(GLFW_KEY_S);
+        boolean left = isKeyPressed(GLFW_KEY_A);
+        boolean right = isKeyPressed(GLFW_KEY_D);
+        boolean up = isKeyPressed(GLFW_KEY_SPACE);
+        boolean down = isKeyPressed(GLFW_KEY_LEFT_SHIFT);
+        
+        player.handleMovement(forward, backward, left, right, up, down, deltaTime);
     }
     
     private void handleKeyInput(long window, int key, int scancode, int action, int mods) {
@@ -353,27 +390,30 @@ public class MinefocadoGame {
             if (action == GLFW_PRESS) {
                 keyPressed[key] = true;
                 
-                // Manejar selección de hotbar con teclas numéricas
-                if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
-                    int slot = key - GLFW_KEY_1;
-                    player.setHotbarSelection(slot);
-                }
-                
-                // Detectar doble pulsación de espacio para vuelo
-                if (key == GLFW_KEY_SPACE) {
-                    long currentTime = System.currentTimeMillis();
-                    if (currentTime - lastSpacePress < DOUBLE_PRESS_TIME) {
-                        // Doble pulsación detectada, alternar modo vuelo
-                        player.toggleFlying();
-                        
-                        // Mostrar mensaje según el estado de vuelo
-                        if (player.isFlying()) {
-                            System.out.println("Modo de vuelo activado - Pulsa espacio dos veces para desactivar");
-                        } else {
-                            System.out.println("Modo de vuelo desactivado - Pulsa espacio dos veces para activar");
-                        }
+                // Skip player-related actions if player not yet initialized
+                if (player != null) {
+                    // Manejar selección de hotbar con teclas numéricas
+                    if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9) {
+                        int slot = key - GLFW_KEY_1;
+                        player.setHotbarSelection(slot);
                     }
-                    lastSpacePress = currentTime;
+                    
+                    // Detectar doble pulsación de espacio para vuelo
+                    if (key == GLFW_KEY_SPACE) {
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - lastSpacePress < DOUBLE_PRESS_TIME) {
+                            // Doble pulsación detectada, alternar modo vuelo
+                            player.toggleFlying();
+                            
+                            // Mostrar mensaje según el estado de vuelo
+                            if (player.isFlying()) {
+                                System.out.println("Modo de vuelo activado - Pulsa espacio dos veces para desactivar");
+                            } else {
+                                System.out.println("Modo de vuelo desactivado - Pulsa espacio dos veces para activar");
+                            }
+                        }
+                        lastSpacePress = currentTime;
+                    }
                 }
             } else if (action == GLFW_RELEASE) {
                 keyPressed[key] = false;
@@ -382,24 +422,29 @@ public class MinefocadoGame {
     }
     
     private void handleMouseMove(long window, double xpos, double ypos) {
-        // Solo rotar la cámara si el ratón está capturado
-        if (mouseGrabbed) {
-            // Calcular delta del ratón
+        // Only rotate camera if mouse is grabbed and player is initialized
+        if (mouseGrabbed && player != null) {
+            // Calculate mouse delta
             double deltaX = xpos - lastMouseX;
             double deltaY = ypos - lastMouseY;
             
-            // El primer frame no tiene deltas
+            // First frame has no deltas
             if (lastMouseX != 0 && lastMouseY != 0) {
                 player.getCamera().rotate((float) deltaX, (float) deltaY);
             }
             
-            // Actualizar última posición conocida
+            // Update last known position
             lastMouseX = xpos;
             lastMouseY = ypos;
         }
     }
     
     private void handleMouseButton(long window, int button, int action, int mods) {
+        // Skip if player not yet initialized or world is null
+        if (player == null || world == null) {
+            return;
+        }
+        
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             // Romper bloque con botón izquierdo del ratón
             player.breakBlock();
@@ -410,6 +455,11 @@ public class MinefocadoGame {
     }
     
     private void handleScroll(long window, double xoffset, double yoffset) {
+        // Skip if player not yet initialized or world is null
+        if (player == null || world == null) {
+            return;
+        }
+        
         // La rueda de desplazamiento cambia la selección de la barra de acceso rápido
         player.changeHotbarSelection((int) -yoffset);
     }
@@ -418,7 +468,66 @@ public class MinefocadoGame {
         // Actualizar viewport de OpenGL
         glViewport(0, 0, width, height);
         
+        // Skip if player not yet initialized
+        if (player == null) {
+            return;
+        }
+        
         // Actualizar matriz de proyección de la cámara
         player.getCamera().updateProjectionMatrix(width, height);
+    }
+    
+    /**
+     * Toggle mouse grab mode (useful for freeing the cursor to interact with menus)
+     */
+    private void toggleMouseGrab() {
+        mouseGrabbed = !mouseGrabbed;
+        
+        if (mouseGrabbed) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            // Reset mouse position to prevent camera jump
+            lastMouseX = 0;
+            lastMouseY = 0;
+        } else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        
+        System.out.println("Mouse grab: " + (mouseGrabbed ? "enabled" : "disabled"));
+    }
+    
+    /**
+     * Checks if a key is currently pressed down
+     * @param key The GLFW key code to check
+     * @return true if the key is pressed, false otherwise
+     */
+    private boolean isKeyPressed(int key) {
+        if (key < 0 || key > GLFW_KEY_LAST) {
+            return false;
+        }
+        return keyPressed[key];
+    }
+    
+    // Keep track of the previous frame's key states for "just pressed" detection
+    private boolean[] previousKeyPressed = new boolean[GLFW_KEY_LAST + 1];
+    
+    /**
+     * Check if a key was just pressed this frame (not held down)
+     * @param key The GLFW key code to check
+     * @return true if the key was just pressed this frame
+     */
+    private boolean isKeyJustPressed(int key) {
+        if (key < 0 || key > GLFW_KEY_LAST) {
+            return false;
+        }
+        return keyPressed[key] && !previousKeyPressed[key];
+    }
+    
+    /**
+     * Updates the previous key states at the end of each frame
+     * Should be called at the end of each frame to update input state
+     */
+    private void updateInputState() {
+        // Copy current key states to previous key states
+        System.arraycopy(keyPressed, 0, previousKeyPressed, 0, keyPressed.length);
     }
 }
